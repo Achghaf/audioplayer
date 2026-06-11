@@ -440,37 +440,48 @@ async function getFileUrl(fileId){
   return `${FILE_API}/${r.result.file_path}`;
 }
 
-// ── Config stored as a JSON text message in the channel ──────────
+// ── Config stored as a pinned JSON text message in the channel ───
 // Format: WAVESHELF_CONFIG:{...json...}
+// Discovery order: 1) pinned message  2) recent channel messages scan
 const CONFIG_TAG = 'WAVESHELF_CONFIG:';
 
 async function loadConfig(){
-  // Search pinned messages first
-  const pinned = await tgGet('getChatAdministrators', {chat_id: CHANNEL_ID}).catch(()=>({ok:false}));
-  // Scan recent messages for config
-  let offset = 0;
   let found = null;
-  // We scan up to 500 messages to find config
-  for(let page=0; page<5 && !found; page++){
-    const res = await tgGet('getUpdates', {offset, limit:100, timeout:0}).catch(()=>({ok:false,result:[]}));
-    if(!res.ok) break;
-    if(!res.result.length) break;
-    for(const u of res.result){
-      offset = u.update_id + 1;
-      const msg = u.channel_post || u.message;
-      if(!msg) continue;
-      if(String(msg.chat?.id) !== String(CHANNEL_ID) && String(msg.chat?.id) !== CHANNEL_ID) continue;
-      if(msg.text && msg.text.startsWith(CONFIG_TAG)){
-        found = {msgId: msg.message_id, text: msg.text};
+
+  // ── Strategy 1: pinned message (instant on any device) ──────────
+  try {
+    const chatRes = await tgGet('getChat', {chat_id: CHANNEL_ID});
+    if(chatRes.ok && chatRes.result.pinned_message){
+      const pm = chatRes.result.pinned_message;
+      if(pm.text && pm.text.startsWith(CONFIG_TAG)){
+        found = {msgId: pm.message_id, text: pm.text};
+      }
+    }
+  } catch(e){ /* fall through */ }
+
+  // ── Strategy 2: scan recent channel posts via getUpdates ────────
+  if(!found){
+    let offset = 0;
+    for(let page = 0; page < 10 && !found; page++){
+      const res = await tgGet('getUpdates',{offset, limit:100, timeout:0}).catch(()=>({ok:false,result:[]}));
+      if(!res.ok || !res.result.length) break;
+      for(const u of res.result){
+        offset = u.update_id + 1;
+        const msg = u.channel_post || u.message;
+        if(!msg) continue;
+        if(String(msg.chat?.id) !== String(CHANNEL_ID)) continue;
+        if(msg.text && msg.text.startsWith(CONFIG_TAG)){
+          found = {msgId: msg.message_id, text: msg.text};
+        }
       }
     }
   }
+
   if(found){
     configMsgId = found.msgId;
     try{
       const cfg = JSON.parse(found.text.slice(CONFIG_TAG.length));
       folders = cfg.folders || [];
-      // merge per-track meta
       if(cfg.meta) window._tgMeta = cfg.meta;
     }catch(e){ folders=[]; window._tgMeta={}; }
   } else {
@@ -481,17 +492,29 @@ async function loadConfig(){
 
 async function saveConfig(){
   const meta = window._tgMeta || {};
-  const cfg = { folders, meta };
+  const cfg  = { folders, meta };
   const text = CONFIG_TAG + JSON.stringify(cfg);
+
   if(configMsgId){
+    // Try to edit existing config message
     const r = await tgPost('editMessageText',{chat_id:CHANNEL_ID, message_id:configMsgId, text});
-    if(!r.ok){ // message too old to edit — post new
+    if(!r.ok){
+      // Too old to edit — post a fresh one
       configMsgId = null;
       return saveConfig();
     }
   } else {
+    // Post new config message
     const r = await tgPost('sendMessage',{chat_id:CHANNEL_ID, text});
-    if(r.ok) configMsgId = r.result.message_id;
+    if(r.ok){
+      configMsgId = r.result.message_id;
+      // Pin it so every device finds it instantly via getChat
+      await tgPost('pinChatMessage',{
+        chat_id: CHANNEL_ID,
+        message_id: configMsgId,
+        disable_notification: true
+      }).catch(()=>{}); // pin may fail if bot lacks admin rights — that's fine
+    }
   }
 }
 
@@ -922,6 +945,7 @@ function buildCard(t){
         </div>
         <div class="card-actions">
           <button class="icon-btn" title="Edit" onclick="openEditModal('${t.id}')">✎</button>
+          <button class="icon-btn danger" title="Remove from library" onclick="deleteTrack('${t.id}')">🗑</button>
         </div>
       </div>
       <div class="card-tags">
@@ -1030,6 +1054,23 @@ function buildColorPicker(selected){
     sw.onclick=()=>{wrap.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));sw.classList.add('selected');};
     wrap.appendChild(sw);
   });
+}
+
+// ── Delete Track ────────────────────────────────────────────────
+function deleteTrack(id){
+  const t = tracks.find(t=>t.id===id);
+  if(!t) return;
+  if(!confirm(`Remove "${t.name}" from your library?\n\n(The file stays in Telegram — this only removes it from Waveshelf.)`)) return;
+  // Remove from config meta
+  if(window._tgMeta && t.tgMsgId) delete window._tgMeta[t.tgMsgId];
+  saveConfig();
+  // Stop playback if this track is playing
+  if(currentCard===id && currentAudio){
+    currentAudio.pause(); currentAudio=null; currentCard=null;
+  }
+  tracks = tracks.filter(t=>t.id!==id);
+  renderAll(); updateStats(); updateSidebar();
+  showToast('Track removed from library');
 }
 
 // ── Helpers ─────────────────────────────────────────────────────
