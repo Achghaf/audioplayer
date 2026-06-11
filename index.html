@@ -135,11 +135,6 @@
   .tag-class{background:rgba(124,106,247,.15);color:var(--accent2);border:1px solid rgba(124,106,247,.25)}
   .tag-album{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.2)}
   .tag-folder{background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2)}
-  .tag-type-file{background:rgba(42,171,238,.12);color:var(--tg);border:1px solid rgba(42,171,238,.25)}
-  .tag-type-playlist{background:rgba(236,72,153,.12);color:#f472b6;border:1px solid rgba(236,72,153,.25)}
-  .card-type-badge{position:absolute;bottom:8px;right:8px;z-index:2;border-radius:5px;padding:2px 7px;font-size:.62rem;font-family:'Space Mono',monospace;font-weight:700}
-  .card-type-badge.file{background:rgba(42,171,238,.2);border:1px solid rgba(42,171,238,.4);color:var(--tg)}
-  .card-type-badge.playlist{background:rgba(236,72,153,.2);border:1px solid rgba(236,72,153,.4);color:#f472b6}
   .card-player{display:flex;align-items:center;gap:8px}
   .play-btn{width:32px;height:32px;border-radius:8px;background:var(--accent);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0;transition:background .15s,transform .15s}
   .play-btn:hover{background:#6a58e8;transform:scale(1.05)}
@@ -165,21 +160,6 @@
   .color-swatch{width:28px;height:28px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:border-color .15s,transform .15s}
   .color-swatch:hover,.color-swatch.selected{border-color:#fff;transform:scale(1.12)}
   .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:22px}
-
-  /* PRE-UPLOAD MODAL */
-  .preupload-type-row{display:flex;gap:10px;margin-bottom:6px}
-  .type-opt{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 10px;border-radius:12px;border:2px solid var(--border);cursor:pointer;transition:all .18s;background:var(--surface2);user-select:none}
-  .type-opt:hover{border-color:var(--accent);background:var(--glow)}
-  .type-opt.selected{border-color:var(--accent);background:var(--glow)}
-  .type-opt.selected.playlist{border-color:#f472b6;background:rgba(236,72,153,.1)}
-  .type-opt-icon{font-size:1.6rem}
-  .type-opt-label{font-size:.82rem;font-weight:600}
-  .type-opt-desc{font-size:.7rem;color:var(--muted);text-align:center;line-height:1.4}
-  .preupload-name-wrap{margin-top:14px;transition:opacity .2s}
-  .preupload-name-wrap.hidden{opacity:0;pointer-events:none;height:0;margin:0;overflow:hidden}
-  .preupload-files-preview{margin-top:12px;max-height:110px;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
-  .preupload-file-row{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);background:var(--surface2);border-radius:7px;padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .preupload-file-row span{flex:1;overflow:hidden;text-overflow:ellipsis}
 
   /* FOLDER ICON PICKER */
   .icon-grid{display:flex;gap:6px;flex-wrap:wrap}
@@ -231,9 +211,8 @@
       <div class="sync-dot ok" id="sync-dot"></div>
       <span id="sync-label">Synced</span>
     </div>
-    <button class="btn btn-tg" onclick="loadFromTelegram()">↻ Refresh</button>
+    <button class="btn btn-tg" onclick="loadFromTelegram()" title="Reload tracks from Telegram (locally uploaded audio this session is preserved)">↻ Refresh</button>
     <button class="btn btn-ghost" onclick="document.getElementById('file-input').click()">＋ Add Audio</button>
-    <button class="btn btn-ghost btn-sm" onclick="openSettings()" title="Settings">⚙</button>
   </div>
 </header>
 
@@ -256,23 +235,23 @@
     </div>
 
     <div class="sidebar-section">
-      <div class="sidebar-label">Type</div>
-      <div class="folder-item" id="folder-type-file" onclick="selectFolder('__type_file__')" data-folder="__type_file__">
-        <span class="folder-icon">🗂️</span>
-        <span class="folder-name">Files</span>
-        <span class="folder-count" id="fc-type-file">0</span>
-      </div>
-      <div class="folder-item" id="folder-type-playlist" onclick="selectFolder('__type_playlist__')" data-folder="__type_playlist__">
-        <span class="folder-icon">▶️</span>
-        <span class="folder-name">Playlists</span>
-        <span class="folder-count" id="fc-type-playlist">0</span>
-      </div>
-    </div>
-
-    <div class="sidebar-section">
       <div class="sidebar-label">Folders</div>
       <div id="folder-list"></div>
-      <button class="new-folder-btn" onclick="openNewFolderModal()">＋ New Folder</button>
+      <!-- Inline quick-create -->
+      <div id="quick-folder-form" style="display:none;margin-top:8px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span id="qf-icon-preview" style="font-size:1.1rem;cursor:pointer;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:7px" onclick="cycleQuickIcon()" title="Click to change icon">📁</span>
+          <input type="text" id="quick-folder-name" placeholder="Folder name…"
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 9px;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:.82rem;outline:none;transition:border-color .18s"
+            onkeydown="if(event.key==='Enter')saveQuickFolder();if(event.key==='Escape')toggleQuickFolder(false)"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-primary btn-sm" style="flex:1" onclick="saveQuickFolder()">Create</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleQuickFolder(false)">Cancel</button>
+        </div>
+      </div>
+      <button class="new-folder-btn" id="new-folder-btn" onclick="toggleQuickFolder(true)">＋ New Folder</button>
     </div>
   </aside>
 
@@ -329,67 +308,6 @@
   </div>
 </div>
 
-<!-- SETTINGS MODAL -->
-<div class="modal-overlay" id="settings-modal">
-  <div class="modal" style="max-width:440px">
-    <div class="modal-header">
-      <span class="modal-title">⚙ Telegram Settings</span>
-      <button class="modal-close" id="settings-close-btn" onclick="closeSettings()">✕</button>
-    </div>
-    <p style="font-size:.8rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
-      Your credentials are saved only in your browser's <strong style="color:var(--text)">localStorage</strong> — they are never in your source code or sent anywhere except Telegram.
-    </p>
-    <div class="form-group">
-      <label>Bot Token</label>
-      <input type="password" id="cfg-token" placeholder="1234567890:AAxxxxx…" autocomplete="off">
-    </div>
-    <div class="form-group">
-      <label>Channel ID</label>
-      <input type="text" id="cfg-channel" placeholder="-1001234567890" autocomplete="off">
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" id="settings-cancel-btn" onclick="closeSettings()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSettings()">Save & Connect</button>
-    </div>
-  </div>
-</div>
-
-<!-- PRE-UPLOAD MODAL -->
-<div class="modal-overlay" id="preupload-modal">
-  <div class="modal" style="max-width:460px">
-    <div class="modal-header">
-      <span class="modal-title">📤 Upload Audio</span>
-      <button class="modal-close" onclick="cancelPreUpload()">✕</button>
-    </div>
-    <div class="form-group" style="margin-bottom:8px">
-      <label>Classify as</label>
-      <div class="preupload-type-row">
-        <div class="type-opt selected" id="pu-opt-file" onclick="selectPreUploadType('file')">
-          <span class="type-opt-icon">🗂️</span>
-          <span class="type-opt-label">File</span>
-          <span class="type-opt-desc">Individual audio track(s)</span>
-        </div>
-        <div class="type-opt" id="pu-opt-playlist" onclick="selectPreUploadType('playlist')">
-          <span class="type-opt-icon">▶️</span>
-          <span class="type-opt-label">Playlist</span>
-          <span class="type-opt-desc">Group into a named playlist</span>
-        </div>
-      </div>
-    </div>
-    <div class="preupload-name-wrap hidden" id="pu-name-wrap">
-      <div class="form-group" style="margin-bottom:0">
-        <label id="pu-name-label">Playlist name</label>
-        <input type="text" id="pu-name" placeholder="e.g. Chill Vibes, Morning Mix…">
-      </div>
-    </div>
-    <div id="pu-files-preview" class="preupload-files-preview"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="cancelPreUpload()">Cancel</button>
-      <button class="btn btn-primary" id="pu-confirm-btn" onclick="confirmPreUpload()">Upload</button>
-    </div>
-  </div>
-</div>
-
 <!-- EDIT TRACK MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
@@ -400,13 +318,6 @@
     <div class="form-group"><label>Track Name</label><input type="text" id="edit-name" placeholder="Track title"></div>
     <div class="form-group"><label>Album</label><input type="text" id="edit-album" placeholder="Album name"></div>
     <div class="form-group"><label>Class / Genre</label><input type="text" id="edit-class" placeholder="Hip-Hop, Classical, Ambient…"></div>
-    <div class="form-group">
-      <label>Type</label>
-      <select id="edit-type">
-        <option value="file">🗂️ File</option>
-        <option value="playlist">▶️ Playlist</option>
-      </select>
-    </div>
     <div class="form-group">
       <label>Folder</label>
       <select id="edit-folder">
@@ -443,21 +354,11 @@
 <div id="toast"></div>
 
 <script>
-// ── CONFIG (loaded from localStorage — never commit secrets to git) ──
-function getCfg(key){ return localStorage.getItem('ws_cfg_'+key)||'' }
-function setCfg(key,val){ localStorage.setItem('ws_cfg_'+key,val) }
-
-let BOT_TOKEN  = getCfg('bot_token');
-let CHANNEL_ID = getCfg('channel_id');
-let API        = `https://api.telegram.org/bot${BOT_TOKEN}`;
-let FILE_API   = `https://api.telegram.org/file/bot${BOT_TOKEN}`;
-
-function updateApiUrls(){
-  BOT_TOKEN  = getCfg('bot_token');
-  CHANNEL_ID = getCfg('channel_id');
-  API        = `https://api.telegram.org/bot${BOT_TOKEN}`;
-  FILE_API   = `https://api.telegram.org/file/bot${BOT_TOKEN}`;
-}
+// ── CONFIG ──────────────────────────────────────────────────────
+const BOT_TOKEN  = '8821842994:AAGlp_CjRcnoipVvUiP7_huUrDFYShYw_Bg';
+const CHANNEL_ID = '-1003707723608';
+const API        = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const FILE_API   = `https://api.telegram.org/file/bot${BOT_TOKEN}`;
 
 // ── State ───────────────────────────────────────────────────────
 let tracks      = [];
@@ -467,8 +368,6 @@ let editingId   = null;
 let currentAudio = null;
 let currentCard  = null;
 let newFolderIcon = '📁';
-let pendingFiles = [];
-let preUploadType = 'file';
 
 const COVER_COLORS = [
   ['#7c6af7','#c084fc'],['#f97316','#fbbf24'],
@@ -524,15 +423,22 @@ async function loadFromTelegram(){
 }
 
 async function buildTracksFromMessages(msgs){
+  // Preserve blob URLs from existing tracks so refresh doesn't break locally-added audio
+  const existingBlobUrls={};
+  tracks.forEach(t=>{ if(t.url&&t.url.startsWith('blob:')) existingBlobUrls[t.id]=t.url; });
+
   tracks=[];
   for(const msg of msgs){
     const msgId=msg.message_id;
     if(msg._fromMeta){
+      const trackId='tg_'+msgId;
       tracks.push({
-        id:'tg_'+msgId,tgMsgId:msgId,tgFileId:msg.fileId||null,
+        id:trackId,tgMsgId:msgId,tgFileId:msg.fileId||null,
         name:msg.name||'Track',album:msg.album||'',cls:msg.cls||'',
         folder:msg.folder||'',color:msg.color!==undefined?msg.color:(msgId%COVER_COLORS.length),
-        duration:msg.duration||0,url:null,type:msg.type||'file',
+        duration:msg.duration||0,
+        // restore blob URL if we had one (uploaded this session)
+        url:existingBlobUrls[trackId]||null,
       });
     }
   }
@@ -541,7 +447,7 @@ async function buildTracksFromMessages(msgs){
 }
 
 // ── Upload ──────────────────────────────────────────────────────
-async function handleFiles(files, trackType='file', containerName=''){
+async function handleFiles(files){
   if(!files.length)return;
   const queue=document.getElementById('upload-queue');
   queue.classList.add('visible');
@@ -549,7 +455,7 @@ async function handleFiles(files, trackType='file', containerName=''){
     const itemId='qi_'+Date.now()+'_'+Math.random().toString(36).slice(2);
     const item=document.createElement('div');
     item.className='queue-item';item.id=itemId;
-    item.innerHTML=`<span>${trackType==='playlist'?'▶️':'🎵'}</span><span class="queue-name">${esc(file.name)}</span>
+    item.innerHTML=`<span>🎵</span><span class="queue-name">${esc(file.name)}</span>
       <div class="queue-bar-bg"><div class="queue-bar-fill" id="qf_${itemId}"></div></div>
       <span class="queue-status" id="qs_${itemId}">0%</span>`;
     queue.appendChild(item);
@@ -567,13 +473,12 @@ async function handleFiles(files, trackType='file', containerName=''){
           tmp.addEventListener('loadedmetadata',()=>{dur=tmp.duration;res()});
           tmp.addEventListener('error',res);setTimeout(res,3000);
         });
-        const folderVal = activeFolder==='__all__'||activeFolder==='__none__'||activeFolder.startsWith('__type') ? '' : activeFolder;
-        const trackName = trackType==='playlist'&&containerName ? containerName : cleanName(file.name);
-        const meta={name:trackName,album:containerName||'',cls:'',color:colorIdx,duration:dur,fileId,folder:folderVal,type:trackType};
+        const folderVal = activeFolder==='__all__'||activeFolder==='__none__' ? '' : activeFolder;
+        const meta={name:cleanName(file.name),album:'',cls:'',color:colorIdx,duration:dur,fileId,folder:folderVal};
         setMeta(msgId,meta);addToRegistry(msgId);
         tracks.unshift({id:'tg_'+msgId,tgMsgId:msgId,tgFileId:fileId,
-          name:trackName,album:containerName||'',cls:'',color:colorIdx,duration:dur,folder:folderVal,
-          url:URL.createObjectURL(file),type:trackType});
+          name:meta.name,album:'',cls:'',color:colorIdx,duration:dur,folder:folderVal,
+          url:URL.createObjectURL(file)});
         renderAll();updateStats();updateSidebar();
       }
     }catch(e){
@@ -654,6 +559,41 @@ function saveNewFolder(){
   showToast('✓ Folder "'+name+'" created');
 }
 
+// ── Inline sidebar folder creator ───────────────────────────────
+let quickIconIdx = 0;
+function toggleQuickFolder(show){
+  const form=document.getElementById('quick-folder-form');
+  const btn=document.getElementById('new-folder-btn');
+  form.style.display=show?'block':'none';
+  btn.style.display=show?'none':'flex';
+  if(show){
+    quickIconIdx=0;
+    document.getElementById('qf-icon-preview').textContent=FOLDER_ICONS[0];
+    document.getElementById('quick-folder-name').value='';
+    setTimeout(()=>document.getElementById('quick-folder-name').focus(),60);
+  }
+}
+function cycleQuickIcon(){
+  quickIconIdx=(quickIconIdx+1)%FOLDER_ICONS.length;
+  document.getElementById('qf-icon-preview').textContent=FOLDER_ICONS[quickIconIdx];
+}
+function saveQuickFolder(){
+  const name=document.getElementById('quick-folder-name').value.trim();
+  if(!name){
+    const inp=document.getElementById('quick-folder-name');
+    inp.style.borderColor='var(--danger)';
+    setTimeout(()=>inp.style.borderColor='var(--border)',1200);
+    return;
+  }
+  const icon=FOLDER_ICONS[quickIconIdx];
+  const id='folder_'+Date.now();
+  folders.push({id,name,icon});
+  saveFolders(folders);
+  toggleQuickFolder(false);
+  updateSidebar();updateStats();
+  showToast('✓ Folder "'+icon+' '+name+'" created');
+}
+
 function deleteFolder(id){
   if(!confirm('Delete this folder? Tracks won\'t be deleted, just unfiled.'))return;
   folders=folders.filter(f=>f.id!==id);
@@ -676,7 +616,7 @@ function selectFolder(id){
     el.classList.toggle('active',el.dataset.folder===id);
   });
   const folder=folders.find(f=>f.id===id);
-  const titleMap={'__all__':'All Tracks','__none__':'Unfiled','__type_file__':'🗂️ Files','__type_playlist__':'▶️ Playlists'};
+  const titleMap={'__all__':'All Tracks','__none__':'Unfiled'};
   document.getElementById('view-title').textContent=
     folder ? folder.icon+' '+folder.name : (titleMap[id]||'All Tracks');
   renderAll();
@@ -689,10 +629,6 @@ function updateSidebar(){
   // update counts
   document.getElementById('fc-all').textContent=tracks.length;
   document.getElementById('fc-none').textContent=tracks.filter(t=>!t.folder).length;
-  const fcFile=document.getElementById('fc-type-file');
-  const fcPlaylist=document.getElementById('fc-type-playlist');
-  if(fcFile)fcFile.textContent=tracks.filter(t=>(t.type||'file')==='file').length;
-  if(fcPlaylist)fcPlaylist.textContent=tracks.filter(t=>t.type==='playlist').length;
 
   folders.forEach(f=>{
     const count=tracks.filter(t=>t.folder===f.id).length;
@@ -751,11 +687,7 @@ function renderAll(){
 
   let visible=tracks.filter(t=>{
     const matchQ=!q||t.name.toLowerCase().includes(q)||t.album.toLowerCase().includes(q)||t.cls.toLowerCase().includes(q);
-    const matchF=activeFolder==='__all__'
-      ||(activeFolder==='__none__'&&!t.folder)
-      ||(activeFolder==='__type_file__'&&(t.type||'file')==='file')
-      ||(activeFolder==='__type_playlist__'&&t.type==='playlist')
-      ||(t.folder===activeFolder);
+    const matchF=activeFolder==='__all__'||(activeFolder==='__none__'&&!t.folder)||(t.folder===activeFolder);
     return matchQ&&matchF;
   });
 
@@ -799,7 +731,6 @@ function buildCard(t){
       <div class="card-waveform">${bars}</div>
       ${folder?`<div class="card-folder-badge">${folder.icon} ${esc(folder.name)}</div>`:''}
       <div class="card-tg-badge">TG</div>
-      <div class="card-type-badge ${t.type==='playlist'?'playlist':'file'}">${t.type==='playlist'?'PLAYLIST':'FILE'}</div>
     </div>
     <div class="card-body">
       <div class="card-header">
@@ -815,7 +746,6 @@ function buildCard(t){
         ${t.cls?`<span class="tag tag-class">${esc(t.cls)}</span>`:''}
         ${t.album?`<span class="tag tag-album">${esc(t.album)}</span>`:''}
         ${folder?`<span class="tag tag-folder">${folder.icon} ${esc(folder.name)}</span>`:''}
-        <span class="tag ${t.type==='playlist'?'tag-type-playlist':'tag-type-file'}">${t.type==='playlist'?'▶ Playlist':'🗂 File'}</span>
       </div>
       <div class="card-player">
         <button class="play-btn" onclick="togglePlay('${t.id}',this)">▶</button>
@@ -888,7 +818,6 @@ function openEditModal(id){
   document.getElementById('edit-name').value=t.name;
   document.getElementById('edit-album').value=t.album;
   document.getElementById('edit-class').value=t.cls;
-  document.getElementById('edit-type').value=t.type||'file';
   updateSidebar();
   document.getElementById('edit-folder').value=t.folder||'';
   buildColorPicker(t.color);
@@ -901,11 +830,10 @@ function saveEdit(){
   t.name=document.getElementById('edit-name').value.trim()||t.name;
   t.album=document.getElementById('edit-album').value.trim();
   t.cls=document.getElementById('edit-class').value.trim();
-  t.type=document.getElementById('edit-type').value||'file';
   t.folder=document.getElementById('edit-folder').value;
   const sel=document.querySelector('.color-swatch.selected');
   if(sel)t.color=parseInt(sel.dataset.idx);
-  if(t.tgMsgId)setMeta(t.tgMsgId,{name:t.name,album:t.album,cls:t.cls,color:t.color,duration:t.duration,fileId:t.tgFileId,folder:t.folder,type:t.type});
+  if(t.tgMsgId)setMeta(t.tgMsgId,{name:t.name,album:t.album,cls:t.cls,color:t.color,duration:t.duration,fileId:t.tgFileId,folder:t.folder});
   closeModal('modal');
   renderCard(editingId);
   updateSidebar();updateStats();
@@ -954,86 +882,6 @@ function showToast(msg){
   clearTimeout(t._timer);t._timer=setTimeout(()=>t.style.display='none',3000);
 }
 
-// ── Settings Modal ───────────────────────────────────────────────
-function openSettings(){
-  document.getElementById('cfg-token').value = getCfg('bot_token');
-  document.getElementById('cfg-channel').value = getCfg('channel_id');
-  // only allow closing if credentials already exist
-  const hasCreds = getCfg('bot_token') && getCfg('channel_id');
-  document.getElementById('settings-close-btn').style.display = hasCreds ? '' : 'none';
-  document.getElementById('settings-cancel-btn').style.display = hasCreds ? '' : 'none';
-  document.getElementById('settings-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('cfg-token').focus(),100);
-}
-
-function closeSettings(){
-  if(!getCfg('bot_token')||!getCfg('channel_id'))return; // must save first
-  closeModal('settings-modal');
-}
-
-function saveSettings(){
-  const token = document.getElementById('cfg-token').value.trim();
-  const channel = document.getElementById('cfg-channel').value.trim();
-  if(!token||!channel){ showToast('⚠ Both fields are required'); return; }
-  setCfg('bot_token', token);
-  setCfg('channel_id', channel);
-  updateApiUrls();
-  closeModal('settings-modal');
-  showToast('✓ Credentials saved — connecting…');
-  loadFromTelegram();
-}
-
-// ── Pre-Upload Modal ────────────────────────────────────────────
-function openPreUploadModal(files){
-  pendingFiles = files;
-  preUploadType = 'file';
-  document.getElementById('pu-opt-file').classList.add('selected');
-  document.getElementById('pu-opt-playlist').classList.remove('selected');
-  document.getElementById('pu-name-wrap').classList.add('hidden');
-  document.getElementById('pu-name').value='';
-
-  // show file preview
-  const preview = document.getElementById('pu-files-preview');
-  preview.innerHTML = files.slice(0,8).map(f=>
-    `<div class="preupload-file-row"><span>🎵</span><span>${esc(f.name)}</span></div>`
-  ).join('') + (files.length>8?`<div class="preupload-file-row" style="justify-content:center;color:var(--accent)">+ ${files.length-8} more files</div>`:'');
-
-  document.getElementById('preupload-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('pu-name').focus&&document.getElementById('pu-name').focus(),200);
-}
-
-function selectPreUploadType(type){
-  preUploadType = type;
-  document.getElementById('pu-opt-file').classList.toggle('selected', type==='file');
-  document.getElementById('pu-opt-playlist').classList.toggle('selected', type==='playlist');
-  const wrap = document.getElementById('pu-name-wrap');
-  const label = document.getElementById('pu-name-label');
-  if(type==='playlist'){
-    wrap.classList.remove('hidden');
-    label.textContent = 'Playlist name';
-    setTimeout(()=>document.getElementById('pu-name').focus(),80);
-  } else {
-    wrap.classList.add('hidden');
-  }
-}
-
-function cancelPreUpload(){
-  pendingFiles=[];
-  closeModal('preupload-modal');
-}
-
-function confirmPreUpload(){
-  const name = document.getElementById('pu-name').value.trim();
-  if(preUploadType==='playlist'&&!name){
-    showToast('Please enter a playlist name');
-    document.getElementById('pu-name').focus();
-    return;
-  }
-  closeModal('preupload-modal');
-  handleFiles(pendingFiles, preUploadType, name);
-  pendingFiles=[];
-}
-
 // ── Drag & Drop upload ──────────────────────────────────────────
 const dz=document.getElementById('drop-zone');
 const fi=document.getElementById('file-input');
@@ -1043,32 +891,20 @@ dz.addEventListener('drop',e=>{
   e.preventDefault();dz.classList.remove('drag-over');
   // only handle audio files (not card drags)
   const files=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('audio'));
-  if(files.length)openPreUploadModal(files);
+  if(files.length)handleFiles(files);
 });
-fi.addEventListener('change',()=>{
-  const files=Array.from(fi.files);
-  if(files.length)openPreUploadModal(files);
-  fi.value='';
-});
+fi.addEventListener('change',()=>{handleFiles(Array.from(fi.files));fi.value='';});
 
 // close modals on backdrop click
-['modal','folder-modal','preupload-modal'].forEach(id=>{
+['modal','folder-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id)});
 });
-document.getElementById('settings-modal').addEventListener('click',function(e){if(e.target===this)closeSettings()});
 
 // enter key in new folder name
 document.getElementById('new-folder-name').addEventListener('keydown',e=>{if(e.key==='Enter')saveNewFolder()});
-// enter key in pre-upload playlist name
-document.getElementById('pu-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmPreUpload()});
 
 // ── Boot ─────────────────────────────────────────────────────────
-if(!getCfg('bot_token')||!getCfg('channel_id')){
-  hideLoading();
-  openSettings();
-} else {
-  loadFromTelegram();
-}
+loadFromTelegram();
 </script>
 </body>
 </html>
