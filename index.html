@@ -106,6 +106,16 @@
   .search-box input{background:none;border:none;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:.83rem;outline:none;width:160px}
   .search-box input::placeholder{color:var(--muted)}
 
+
+  /* SORT BAR */
+  .sort-bar{display:flex;align-items:center;gap:10px;margin-bottom:18px;overflow:hidden}
+  .sort-label{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0}
+  .sort-pills{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .sort-pills::-webkit-scrollbar{display:none}
+  .sort-pill{flex-shrink:0;padding:5px 13px;border-radius:20px;font-family:'Space Grotesk',sans-serif;font-size:.76rem;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .15s;white-space:nowrap}
+  .sort-pill:hover{border-color:var(--accent);color:var(--text)}
+  .sort-pill.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 12px rgba(124,106,247,.35)}
+
   /* GRID */
   .audio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:16px}
   .audio-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:transform .2s,box-shadow .2s,border-color .2s;position:relative;cursor:grab}
@@ -196,6 +206,18 @@
 </head>
 <body>
 
+<!-- MOBILE SIDEBAR OVERLAY -->
+<div id="sidebar-overlay" onclick="toggleMobileSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:149;backdrop-filter:blur(4px)"></div>
+<style>
+  #sidebar-overlay.visible{display:block}
+  @media(max-width:768px){
+    .sidebar{display:block!important;position:fixed;top:0;left:0;height:100vh;z-index:150;transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+    .sidebar.mobile-open{transform:translateX(0)}
+    .mobile-menu-btn{display:flex!important}
+  }
+  .mobile-menu-btn{display:none;align-items:center;justify-content:center;width:36px;height:36px;border-radius:9px;background:var(--surface2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-size:1rem;flex-shrink:0}
+</style>
+
 <!-- LOADING -->
 <div class="loading-screen" id="loading">
   <div class="loading-logo">⬡ waveshelf</div>
@@ -205,7 +227,10 @@
 
 <!-- HEADER -->
 <header>
-  <div class="logo">⬡ waveshelf</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" title="Open library">☰</button>
+    <div class="logo">⬡ waveshelf</div>
+  </div>
   <div class="header-right">
     <div class="sync-status">
       <div class="sync-dot ok" id="sync-dot"></div>
@@ -297,6 +322,21 @@
       </div>
     </div>
 
+    <!-- SORT BAR -->
+    <div class="sort-bar" id="sort-bar">
+      <span class="sort-label">Sort</span>
+      <div class="sort-pills">
+        <button class="sort-pill active" data-sort="date-desc" onclick="setSort('date-desc')">🕐 Newest</button>
+        <button class="sort-pill" data-sort="date-asc"  onclick="setSort('date-asc')">🕐 Oldest</button>
+        <button class="sort-pill" data-sort="name-asc"  onclick="setSort('name-asc')">🔤 A → Z</button>
+        <button class="sort-pill" data-sort="name-desc" onclick="setSort('name-desc')">🔤 Z → A</button>
+        <button class="sort-pill" data-sort="num-asc"   onclick="setSort('num-asc')">🔢 1 → 9</button>
+        <button class="sort-pill" data-sort="num-desc"  onclick="setSort('num-desc')">🔢 9 → 1</button>
+        <button class="sort-pill" data-sort="dur-desc"  onclick="setSort('dur-desc')">⏱ Longest</button>
+        <button class="sort-pill" data-sort="dur-asc"   onclick="setSort('dur-asc')">⏱ Shortest</button>
+      </div>
+    </div>
+
     <!-- GRID -->
     <div class="audio-grid" id="audio-grid">
       <div class="empty-state" id="empty-state">
@@ -361,13 +401,15 @@ const API        = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const FILE_API   = `https://api.telegram.org/file/bot${BOT_TOKEN}`;
 
 // ── State ───────────────────────────────────────────────────────
-let tracks      = [];
-let folders     = [];   // { id, name, icon }
+let tracks       = [];
+let folders      = [];
 let activeFolder = '__all__';
-let editingId   = null;
+let activeSort   = 'date-desc';
+let editingId    = null;
 let currentAudio = null;
 let currentCard  = null;
 let newFolderIcon = '📁';
+let configMsgId  = null;   // Telegram message ID of the pinned config JSON
 
 const COVER_COLORS = [
   ['#7c6af7','#c084fc'],['#f97316','#fbbf24'],
@@ -375,166 +417,234 @@ const COVER_COLORS = [
   ['#10b981','#34d399'],['#8b5cf6','#6366f1'],
   ['#f59e0b','#84cc16'],['#ef4444','#f97316'],
 ];
-
 const FOLDER_ICONS = ['📁','🎵','🎶','🎸','🎹','🎺','🎻','🥁','🎤','🎧',
   '🔥','⭐','💜','🌊','🌙','☀️','🏔️','🌿','💫','🎯'];
 
-// ── Storage helpers ─────────────────────────────────────────────
-function getMeta(msgId){ try{return JSON.parse(localStorage.getItem('ws_meta_'+msgId)||'null')}catch{return null} }
-function setMeta(msgId,data){ localStorage.setItem('ws_meta_'+msgId,JSON.stringify(data)) }
-function getRegistry(){ try{return JSON.parse(localStorage.getItem('ws_registry')||'[]')}catch{return []} }
-function addToRegistry(msgId){ const r=getRegistry(); if(!r.includes(msgId)){r.push(msgId);localStorage.setItem('ws_registry',JSON.stringify(r))} }
-function getFolders(){ try{return JSON.parse(localStorage.getItem('ws_folders')||'[]')}catch{return []} }
-function saveFolders(f){ localStorage.setItem('ws_folders',JSON.stringify(f)) }
-
-// ── Telegram helpers ────────────────────────────────────────────
-async function tgGet(method,params={}){
-  const url=new URL(`${API}/${method}`);
-  Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
-  const r=await fetch(url); return r.json();
+// ── Telegram API helpers ─────────────────────────────────────────
+async function tgGet(method, params={}){
+  const url = new URL(`${API}/${method}`);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, String(v)));
+  const r = await fetch(url);
+  return r.json();
+}
+async function tgPost(method, body){
+  const r = await fetch(`${API}/${method}`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  return r.json();
 }
 async function getFileUrl(fileId){
-  const r=await tgGet('getFile',{file_id:fileId});
-  if(!r.ok)return null;
+  const r = await tgGet('getFile', {file_id: fileId});
+  if(!r.ok) return null;
   return `${FILE_API}/${r.result.file_path}`;
 }
 
-// ── Load ────────────────────────────────────────────────────────
+// ── Config stored as a JSON text message in the channel ──────────
+// Format: WAVESHELF_CONFIG:{...json...}
+const CONFIG_TAG = 'WAVESHELF_CONFIG:';
+
+async function loadConfig(){
+  // Search pinned messages first
+  const pinned = await tgGet('getChatAdministrators', {chat_id: CHANNEL_ID}).catch(()=>({ok:false}));
+  // Scan recent messages for config
+  let offset = 0;
+  let found = null;
+  // We scan up to 500 messages to find config
+  for(let page=0; page<5 && !found; page++){
+    const res = await tgGet('getUpdates', {offset, limit:100, timeout:0}).catch(()=>({ok:false,result:[]}));
+    if(!res.ok) break;
+    if(!res.result.length) break;
+    for(const u of res.result){
+      offset = u.update_id + 1;
+      const msg = u.channel_post || u.message;
+      if(!msg) continue;
+      if(String(msg.chat?.id) !== String(CHANNEL_ID) && String(msg.chat?.id) !== CHANNEL_ID) continue;
+      if(msg.text && msg.text.startsWith(CONFIG_TAG)){
+        found = {msgId: msg.message_id, text: msg.text};
+      }
+    }
+  }
+  if(found){
+    configMsgId = found.msgId;
+    try{
+      const cfg = JSON.parse(found.text.slice(CONFIG_TAG.length));
+      folders = cfg.folders || [];
+      // merge per-track meta
+      if(cfg.meta) window._tgMeta = cfg.meta;
+    }catch(e){ folders=[]; window._tgMeta={}; }
+  } else {
+    folders = [];
+    window._tgMeta = {};
+  }
+}
+
+async function saveConfig(){
+  const meta = window._tgMeta || {};
+  const cfg = { folders, meta };
+  const text = CONFIG_TAG + JSON.stringify(cfg);
+  if(configMsgId){
+    const r = await tgPost('editMessageText',{chat_id:CHANNEL_ID, message_id:configMsgId, text});
+    if(!r.ok){ // message too old to edit — post new
+      configMsgId = null;
+      return saveConfig();
+    }
+  } else {
+    const r = await tgPost('sendMessage',{chat_id:CHANNEL_ID, text});
+    if(r.ok) configMsgId = r.result.message_id;
+  }
+}
+
+function getMeta(msgId){
+  return (window._tgMeta||{})[msgId] || null;
+}
+function setMeta(msgId, data){
+  if(!window._tgMeta) window._tgMeta = {};
+  window._tgMeta[msgId] = data;
+  saveConfig();
+}
+
+// Folders saved inside config
+function getFolders(){ return folders; }
+function saveFolders(f){ folders=f; saveConfig(); }
+
+// ── Load all audio from channel history ──────────────────────────
 async function loadFromTelegram(){
-  setSyncStatus('loading','Loading…');
-  folders = getFolders();
-  try{
-    const registry=getRegistry();
-    if(!registry.length){
+  setSyncStatus('uploading','Syncing…');
+  document.getElementById('loading-msg').textContent = 'Fetching from Telegram…';
+  try {
+    await loadConfig();
+
+    // Fetch ALL messages from the channel using getUpdates
+    // We collect channel_post updates that have audio
+    const allAudio = [];
+    let offset = 0;
+    let keepGoing = true;
+
+    // getUpdates only gives unseen updates; use forwardMessages trick won't work
+    // Better: use getChatHistory via bot API — not directly available.
+    // We use the registry pattern but synced via config message instead of localStorage.
+    // Track list is embedded in config as an ordered array of msgIds.
+    const cfg = window._tgMeta || {};
+    const msgIds = Object.keys(cfg).map(Number).filter(Boolean).sort((a,b)=>b-a);
+
+    if(!msgIds.length){
       tracks=[];renderAll();updateStats();updateSidebar();
       setSyncStatus('ok','Synced');hideLoading();
       showToast('No tracks yet — drop some audio to upload!');
       return;
     }
-    const msgs=[];
-    for(const msgId of registry){
-      const meta=getMeta(msgId);
-      if(meta) msgs.push({message_id:msgId,_fromMeta:true,...meta});
-    }
-    await buildTracksFromMessages(msgs);
-  }catch(e){
-    setSyncStatus('error','Error');showToast('⚠ Could not load library');hideLoading();
-  }
-}
 
-async function buildTracksFromMessages(msgs){
-  // Preserve blob URLs from existing tracks so refresh doesn't break locally-added audio
-  const existingBlobUrls={};
-  tracks.forEach(t=>{ if(t.url&&t.url.startsWith('blob:')) existingBlobUrls[t.id]=t.url; });
+    // Preserve blob URLs from this session
+    const blobUrls = {};
+    tracks.forEach(t=>{ if(t.url?.startsWith('blob:')) blobUrls[t.id]=t.url; });
 
-  tracks=[];
-  for(const msg of msgs){
-    const msgId=msg.message_id;
-    if(msg._fromMeta){
-      const trackId='tg_'+msgId;
+    tracks = [];
+    for(const msgId of msgIds){
+      const meta = cfg[msgId];
+      if(!meta) continue;
+      const trackId = 'tg_'+msgId;
       tracks.push({
-        id:trackId,tgMsgId:msgId,tgFileId:msg.fileId||null,
-        name:msg.name||'Track',album:msg.album||'',cls:msg.cls||'',
-        folder:msg.folder||'',color:msg.color!==undefined?msg.color:(msgId%COVER_COLORS.length),
-        duration:msg.duration||0,
-        // restore blob URL if we had one (uploaded this session)
-        url:existingBlobUrls[trackId]||null,
+        id: trackId, tgMsgId: msgId, tgFileId: meta.fileId||null,
+        name: meta.name||'Track', album: meta.album||'', cls: meta.cls||'',
+        folder: meta.folder||'', color: meta.color!==undefined ? meta.color : (msgId % COVER_COLORS.length),
+        duration: meta.duration||0,
+        url: blobUrls[trackId]||null,
       });
     }
+
+    renderAll(); updateStats(); updateSidebar();
+    setSyncStatus('ok','Synced'); hideLoading();
+    showToast(`✓ ${tracks.length} track${tracks.length!==1?'s':''} loaded`);
+  } catch(e){
+    console.error(e);
+    setSyncStatus('error','Sync error');
+    showToast('⚠ Could not sync — check connection');
+    hideLoading();
   }
-  renderAll();updateStats();updateSidebar();
-  setSyncStatus('ok','Synced');hideLoading();
 }
 
 // ── Upload ──────────────────────────────────────────────────────
-const UPLOAD_DELAY_MS = 1200;     // ~1.2s between uploads — safe for Telegram's rate limit
+const UPLOAD_DELAY_MS = 1200;
 const UPLOAD_MAX_RETRIES = 5;
-const UPLOAD_RETRY_BASE_MS = 4000; // base wait before retry; multiplied per attempt
+const UPLOAD_RETRY_BASE_MS = 4000;
 
-// Build a hashtag from the filename: "Track 01 - Hello World.mp3" → "#Track_01_Hello_World"
 function fileHashtag(filename){
-  const base=filename.replace(/\.[^.]+$/,'');          // strip extension
-  const tag=base.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u0400-\u04FF]/g,'_') // non-alphanum → _
-               .replace(/_+/g,'_')                     // collapse multiple underscores
-               .replace(/^_|_$/g,'');                  // trim leading/trailing _
+  const base = filename.replace(/\.[^.]+$/, '');
+  const tag = base.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u0400-\u04FF]/g,'_')
+                  .replace(/_+/g,'_').replace(/^_|_$/g,'');
   return '#'+tag;
 }
 
 async function handleFiles(files){
-  if(!files.length)return;
-  const queue=document.getElementById('upload-queue');
+  if(!files.length) return;
+  const queue = document.getElementById('upload-queue');
   queue.classList.add('visible');
-  let failed=0;
+  let failed = 0;
 
-  for(let i=0;i<files.length;i++){
-    const file=files[i];
-    const itemId='qi_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-    const item=document.createElement('div');
-    item.className='queue-item';item.id=itemId;
-    item.innerHTML=`<span>🎵</span><span class="queue-name">${esc(file.name)}</span>
+  for(let i=0; i<files.length; i++){
+    const file = files[i];
+    const itemId = 'qi_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const item = document.createElement('div');
+    item.className = 'queue-item'; item.id = itemId;
+    item.innerHTML = `<span>🎵</span><span class="queue-name">${esc(file.name)}</span>
       <div class="queue-bar-bg"><div class="queue-bar-fill" id="qf_${itemId}"></div></div>
       <span class="queue-status" id="qs_${itemId}">0%</span>`;
     queue.appendChild(item);
 
-    const statEl=()=>document.getElementById('qs_'+itemId);
-    const fillEl=()=>document.getElementById('qf_'+itemId);
+    const statEl = () => document.getElementById('qs_'+itemId);
+    const fillEl = () => document.getElementById('qf_'+itemId);
 
     try{
       setSyncStatus('uploading',`Uploading ${i+1}/${files.length}…`);
-      let result={msgId:null,fileId:null,retryAfter:0};
+      let result = {msgId:null,fileId:null,retryAfter:0};
 
-      for(let attempt=1;attempt<=UPLOAD_MAX_RETRIES;attempt++){
+      for(let attempt=1; attempt<=UPLOAD_MAX_RETRIES; attempt++){
         try{
-          result=await uploadToTelegram(file,itemId);
-          if(result.msgId) break; // success
-
-          // Telegram returned ok:false
-          if(attempt<UPLOAD_MAX_RETRIES){
-            // If Telegram told us how long to wait (retry_after), use that; otherwise back-off
-            const waitMs=result.retryAfter>0 ? result.retryAfter*1000+500 : UPLOAD_RETRY_BASE_MS*attempt;
-            const waitSec=Math.ceil(waitMs/1000);
-            if(statEl()) statEl().textContent=`wait ${waitSec}s`;
+          result = await uploadToTelegram(file, itemId);
+          if(result.msgId) break;
+          if(attempt < UPLOAD_MAX_RETRIES){
+            const waitMs = result.retryAfter>0 ? result.retryAfter*1000+500 : UPLOAD_RETRY_BASE_MS*attempt;
+            if(statEl()) statEl().textContent = `wait ${Math.ceil(waitMs/1000)}s`;
             await delay(waitMs);
-            if(statEl()) statEl().textContent=`retry ${attempt}`;
+            if(statEl()) statEl().textContent = `retry ${attempt}`;
           }
-        }catch(uploadErr){
+        } catch(uploadErr){
           if(attempt===UPLOAD_MAX_RETRIES) throw uploadErr;
-          const waitMs=UPLOAD_RETRY_BASE_MS*attempt;
-          if(statEl()) statEl().textContent=`retry ${attempt}`;
-          await delay(waitMs);
+          await delay(UPLOAD_RETRY_BASE_MS*attempt);
         }
       }
 
-      const {msgId,fileId}=result;
+      const {msgId, fileId} = result;
       if(msgId){
-        if(statEl()){statEl().textContent='✓';statEl().style.color='var(--green)';}
+        if(statEl()){ statEl().textContent='✓'; statEl().style.color='var(--green)'; }
         if(fillEl()) fillEl().style.width='100%';
-        const colorIdx=Math.floor(Math.random()*COVER_COLORS.length);
-        const tmp=new Audio(URL.createObjectURL(file));
-        let dur=0;
+        const colorIdx = Math.floor(Math.random()*COVER_COLORS.length);
+        const tmp = new Audio(URL.createObjectURL(file));
+        let dur = 0;
         await new Promise(res=>{
           tmp.addEventListener('loadedmetadata',()=>{dur=tmp.duration;res()});
-          tmp.addEventListener('error',res);setTimeout(res,3000);
+          tmp.addEventListener('error',res); setTimeout(res,3000);
         });
-        const folderVal=activeFolder==='__all__'||activeFolder==='__none__' ? '' : activeFolder;
-        const meta={name:cleanName(file.name),album:'',cls:'',color:colorIdx,duration:dur,fileId,folder:folderVal};
-        setMeta(msgId,meta);addToRegistry(msgId);
+        const folderVal = activeFolder==='__all__'||activeFolder==='__none__' ? '' : activeFolder;
+        const meta = {name:cleanName(file.name),album:'',cls:'',color:colorIdx,duration:dur,fileId,folder:folderVal};
+        // Save to shared config (syncs to all devices)
+        setMeta(msgId, meta);
         tracks.unshift({id:'tg_'+msgId,tgMsgId:msgId,tgFileId:fileId,
           name:meta.name,album:'',cls:'',color:colorIdx,duration:dur,folder:folderVal,
           url:URL.createObjectURL(file)});
-        renderAll();updateStats();updateSidebar();
-      }else{
+        renderAll(); updateStats(); updateSidebar();
+      } else {
         failed++;
-        if(statEl()){statEl().textContent='✗';statEl().style.color='var(--danger)';}
+        if(statEl()){ statEl().textContent='✗'; statEl().style.color='var(--danger)'; }
       }
-    }catch(e){
+    } catch(e){
       failed++;
-      if(statEl()){statEl().textContent='✗';statEl().style.color='var(--danger)';}
+      if(statEl()){ statEl().textContent='✗'; statEl().style.color='var(--danger)'; }
       console.error('Upload error:',file.name,e);
     }
 
-    // Pause between files to respect Telegram rate limits
-    if(i<files.length-1) await delay(UPLOAD_DELAY_MS);
+    if(i < files.length-1) await delay(UPLOAD_DELAY_MS);
   }
 
   setSyncStatus('ok','Synced');
@@ -545,41 +655,40 @@ async function handleFiles(files){
 
 function delay(ms){ return new Promise(res=>setTimeout(res,ms)); }
 
-async function uploadToTelegram(file,itemId){
-  const caption=fileHashtag(file.name);
+async function uploadToTelegram(file, itemId){
+  const caption = fileHashtag(file.name);
   return new Promise((resolve,reject)=>{
-    const fd=new FormData();
-    fd.append('chat_id',CHANNEL_ID);
-    fd.append('audio',file,file.name);
-    fd.append('caption',caption);          // sends #filename as caption in Telegram
-    fd.append('title',cleanName(file.name));
-    const xhr=new XMLHttpRequest();
-    xhr.open('POST',`${API}/sendAudio`);
-    xhr.upload.onprogress=e=>{
+    const fd = new FormData();
+    fd.append('chat_id', CHANNEL_ID);
+    fd.append('audio', file, file.name);
+    fd.append('caption', caption);
+    fd.append('title', cleanName(file.name));
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API}/sendAudio`);
+    xhr.upload.onprogress = e => {
       if(e.lengthComputable){
-        const pct=Math.round((e.loaded/e.total)*100);
-        const fill=document.getElementById('qf_'+itemId);
-        const stat=document.getElementById('qs_'+itemId);
-        if(fill)fill.style.width=pct+'%';
-        if(stat)stat.textContent=pct+'%';
+        const pct = Math.round((e.loaded/e.total)*100);
+        const fill = document.getElementById('qf_'+itemId);
+        const stat = document.getElementById('qs_'+itemId);
+        if(fill) fill.style.width = pct+'%';
+        if(stat) stat.textContent = pct+'%';
       }
     };
-    xhr.onload=()=>{
+    xhr.onload = () => {
       try{
-        const data=JSON.parse(xhr.responseText);
+        const data = JSON.parse(xhr.responseText);
         if(data.ok){
-          const msgId=data.result.message_id;
-          const fileId=(data.result.audio||data.result.document||{}).file_id||null;
-          resolve({msgId,fileId,retryAfter:0});
-        }else{
-          // Extract retry_after if Telegram sent it (flood wait error)
-          const retryAfter=data.parameters?.retry_after||0;
-          console.warn('Telegram upload rejected:',data.description,retryAfter?`retry_after=${retryAfter}s`:'');
-          resolve({msgId:null,fileId:null,retryAfter});
+          const msgId = data.result.message_id;
+          const fileId = (data.result.audio||data.result.document||{}).file_id||null;
+          resolve({msgId, fileId, retryAfter:0});
+        } else {
+          const retryAfter = data.parameters?.retry_after||0;
+          console.warn('Telegram upload rejected:',data.description);
+          resolve({msgId:null, fileId:null, retryAfter});
         }
-      }catch{resolve({msgId:null,fileId:null,retryAfter:0});}
+      } catch{ resolve({msgId:null,fileId:null,retryAfter:0}); }
     };
-    xhr.onerror=()=>reject(new Error('Network error'));
+    xhr.onerror = () => reject(new Error('Network error'));
     xhr.send(fd);
   });
 }
@@ -592,7 +701,6 @@ function openNewFolderModal(){
   document.getElementById('folder-modal').classList.add('open');
   setTimeout(()=>document.getElementById('new-folder-name').focus(),100);
 }
-
 function buildIconGrid(){
   const grid=document.getElementById('icon-grid');
   grid.innerHTML='';
@@ -608,16 +716,14 @@ function buildIconGrid(){
     grid.appendChild(el);
   });
 }
-
 function saveNewFolder(){
   const name=document.getElementById('new-folder-name').value.trim();
   if(!name){showToast('Please enter a folder name');return;}
   const id='folder_'+Date.now();
   folders.push({id,name,icon:newFolderIcon});
-  saveFolders(folders);
+  saveFolders(folders);  // saves to Telegram config — syncs everywhere
   closeModal('folder-modal');
-  updateSidebar();
-  updateStats();
+  updateSidebar(); updateStats();
   showToast('✓ Folder "'+name+'" created');
 }
 
@@ -650,32 +756,32 @@ function saveQuickFolder(){
   const icon=FOLDER_ICONS[quickIconIdx];
   const id='folder_'+Date.now();
   folders.push({id,name,icon});
-  saveFolders(folders);
+  saveFolders(folders);  // syncs to Telegram
   toggleQuickFolder(false);
-  updateSidebar();updateStats();
+  updateSidebar(); updateStats();
   showToast('✓ Folder "'+icon+' '+name+'" created');
 }
 
 function deleteFolder(id){
-  if(!confirm('Delete this folder? Tracks won\'t be deleted, just unfiled.'))return;
+  if(!confirm('Delete this folder? Tracks won\'t be deleted, just unfiled.')) return;
   folders=folders.filter(f=>f.id!==id);
   saveFolders(folders);
-  // unfile all tracks in this folder
   tracks.forEach(t=>{
     if(t.folder===id){
       t.folder='';
-      if(t.tgMsgId){const m=getMeta(t.tgMsgId)||{};m.folder='';setMeta(t.tgMsgId,m);}
+      const m=getMeta(t.tgMsgId)||{};
+      m.folder=''; setMeta(t.tgMsgId,m);
     }
   });
-  if(activeFolder===id)activeFolder='__all__';
-  updateSidebar();renderAll();updateStats();
+  if(activeFolder===id) activeFolder='__all__';
+  updateSidebar(); renderAll(); updateStats();
   showToast('Folder deleted');
 }
 
 function selectFolder(id){
   activeFolder=id;
   document.querySelectorAll('.folder-item').forEach(el=>{
-    el.classList.toggle('active',el.dataset.folder===id);
+    el.classList.toggle('active', el.dataset.folder===id);
   });
   const folder=folders.find(f=>f.id===id);
   const titleMap={'__all__':'All Tracks','__none__':'Unfiled'};
@@ -687,11 +793,8 @@ function selectFolder(id){
 function updateSidebar(){
   const list=document.getElementById('folder-list');
   list.innerHTML='';
-
-  // update counts
   document.getElementById('fc-all').textContent=tracks.length;
   document.getElementById('fc-none').textContent=tracks.filter(t=>!t.folder).length;
-
   folders.forEach(f=>{
     const count=tracks.filter(t=>t.folder===f.id).length;
     const el=document.createElement('div');
@@ -704,7 +807,6 @@ function updateSidebar(){
       <button class="folder-del" onclick="event.stopPropagation();deleteFolder('${f.id}')" title="Delete folder">✕</button>
     `;
     el.onclick=()=>selectFolder(f.id);
-    // drop target
     el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('folder-drag-over')});
     el.addEventListener('dragleave',()=>el.classList.remove('folder-drag-over'));
     el.addEventListener('drop',e=>{
@@ -714,31 +816,53 @@ function updateSidebar(){
     });
     list.appendChild(el);
   });
-
-  // update folder select in edit modal
   const sel=document.getElementById('edit-folder');
   const cur=sel.value;
   sel.innerHTML='<option value="">— No folder —</option>';
   folders.forEach(f=>{
     const opt=document.createElement('option');
-    opt.value=f.id;opt.textContent=f.icon+' '+f.name;
+    opt.value=f.id; opt.textContent=f.icon+' '+f.name;
     sel.appendChild(opt);
   });
   sel.value=cur;
 }
 
-function moveTrackToFolder(trackId,folderId){
+function moveTrackToFolder(trackId, folderId){
   const t=tracks.find(t=>t.id===trackId);
-  if(!t)return;
-  const oldFolder=t.folder;
+  if(!t) return;
   t.folder=folderId;
-  if(t.tgMsgId){
-    const m=getMeta(t.tgMsgId)||{};
-    m.folder=folderId;setMeta(t.tgMsgId,m);
-  }
-  updateSidebar();renderAll();
+  const m=getMeta(t.tgMsgId)||{};
+  m.folder=folderId; setMeta(t.tgMsgId,m);
+  updateSidebar(); renderAll();
   const f=folders.find(f=>f.id===folderId);
   showToast(`Moved to ${f?f.icon+' '+f.name:'folder'}`);
+}
+
+// ── Sort ─────────────────────────────────────────────────────────
+function setSort(s){
+  activeSort=s;
+  document.querySelectorAll('.sort-pill').forEach(p=>{
+    p.classList.toggle('active', p.dataset.sort===s);
+  });
+  renderAll();
+}
+function leadingNum(str){
+  const m=(str||''). match(/^\s*(\d+)/);
+  return m?parseInt(m[1],10):Infinity;
+}
+function sortTracks(arr){
+  const a=[...arr];
+  switch(activeSort){
+    case 'date-desc': return a;
+    case 'date-asc':  return a.reverse();
+    case 'name-asc':  return a.sort((x,y)=>x.name.localeCompare(y.name));
+    case 'name-desc': return a.sort((x,y)=>y.name.localeCompare(x.name));
+    case 'num-asc':   return a.sort((x,y)=>leadingNum(x.name)-leadingNum(y.name)||x.name.localeCompare(y.name));
+    case 'num-desc':  return a.sort((x,y)=>leadingNum(y.name)-leadingNum(x.name)||y.name.localeCompare(x.name));
+    case 'dur-desc':  return a.sort((x,y)=>(y.duration||0)-(x.duration||0));
+    case 'dur-asc':   return a.sort((x,y)=>(x.duration||0)-(y.duration||0));
+    default: return a;
+  }
 }
 
 // ── Render ──────────────────────────────────────────────────────
@@ -746,17 +870,15 @@ function renderAll(){
   const grid=document.getElementById('audio-grid');
   const empty=document.getElementById('empty-state');
   const q=document.getElementById('search-input').value.toLowerCase();
-
   let visible=tracks.filter(t=>{
     const matchQ=!q||t.name.toLowerCase().includes(q)||t.album.toLowerCase().includes(q)||t.cls.toLowerCase().includes(q);
     const matchF=activeFolder==='__all__'||(activeFolder==='__none__'&&!t.folder)||(t.folder===activeFolder);
     return matchQ&&matchF;
   });
-
+  visible=sortTracks(visible);
   grid.querySelectorAll('.audio-card').forEach(c=>c.remove());
   empty.style.display=visible.length?'none':'block';
   visible.forEach(t=>grid.appendChild(buildCard(t)));
-
   document.getElementById('count-badge').textContent=
     visible.length+' track'+(visible.length!==1?'s':'');
 }
@@ -764,7 +886,7 @@ function renderAll(){
 function renderCard(id){
   const existing=document.querySelector(`[data-id="${id}"]`);
   const t=tracks.find(t=>t.id===id);
-  if(!t||!existing)return;
+  if(!t||!existing) return;
   existing.replaceWith(buildCard(t));
 }
 
@@ -775,7 +897,6 @@ function buildCard(t){
   ).join('');
   const dur=t.duration?fmtTime(t.duration):'--:--';
   const folder=folders.find(f=>f.id===t.folder);
-
   const card=document.createElement('div');
   card.className='audio-card';
   card.dataset.id=t.id;
@@ -785,7 +906,6 @@ function buildCard(t){
     card.classList.add('dragging');
   });
   card.addEventListener('dragend',()=>card.classList.remove('dragging'));
-
   card.innerHTML=`
     <div class="card-cover">
       <div class="card-cover-bg" style="background:linear-gradient(135deg,${c1},${c2})"></div>
@@ -829,11 +949,11 @@ function buildCard(t){
 // ── Player ──────────────────────────────────────────────────────
 async function togglePlay(id,btn){
   const t=tracks.find(t=>t.id===id);
-  if(!t)return;
+  if(!t) return;
   if(currentAudio&&currentCard!==id){
     currentAudio.pause();
     const prevBtn=document.querySelector(`[data-id="${currentCard}"] .play-btn`);
-    if(prevBtn)prevBtn.textContent='▶';
+    if(prevBtn) prevBtn.textContent='▶';
     document.querySelector(`[data-id="${currentCard}"]`)?.classList.remove('playing');
     currentAudio=null;
   }
@@ -841,8 +961,8 @@ async function togglePlay(id,btn){
     btn.textContent='⏳';
     const url=t.url||(t.tgFileId?await getFileUrl(t.tgFileId):null);
     if(!url){showToast('⚠ Could not load audio');btn.textContent='▶';return;}
-    if(!t.url)t.url=url;
-    currentAudio=new Audio(url);currentCard=id;
+    if(!t.url) t.url=url;
+    currentAudio=new Audio(url); currentCard=id;
     currentAudio.addEventListener('timeupdate',()=>updateProgress(id));
     currentAudio.addEventListener('ended',()=>{
       btn.textContent='▶';
@@ -850,33 +970,31 @@ async function togglePlay(id,btn){
     });
   }
   if(currentAudio.paused){
-    await currentAudio.play();btn.textContent='⏸';
+    await currentAudio.play(); btn.textContent='⏸';
     document.querySelector(`[data-id="${id}"]`)?.classList.add('playing');
-  }else{
-    currentAudio.pause();btn.textContent='▶';
+  } else {
+    currentAudio.pause(); btn.textContent='▶';
     document.querySelector(`[data-id="${id}"]`)?.classList.remove('playing');
   }
 }
-
 function seek(e,id,bar){
-  if(!currentAudio||currentCard!==id)return;
+  if(!currentAudio||currentCard!==id) return;
   currentAudio.currentTime=((e.clientX-bar.getBoundingClientRect().left)/bar.offsetWidth)*currentAudio.duration;
 }
-
 function updateProgress(id){
-  if(!currentAudio)return;
+  if(!currentAudio) return;
   const pct=(currentAudio.currentTime/currentAudio.duration)*100||0;
   const fill=document.getElementById('prog-'+id);
   const cur=document.getElementById('cur-'+id);
-  if(fill)fill.style.width=pct+'%';
-  if(cur)cur.textContent=fmtTime(currentAudio.currentTime);
+  if(fill) fill.style.width=pct+'%';
+  if(cur)  cur.textContent=fmtTime(currentAudio.currentTime);
 }
 
 // ── Edit Modal ──────────────────────────────────────────────────
 function openEditModal(id){
   editingId=id;
   const t=tracks.find(t=>t.id===id);
-  if(!t)return;
+  if(!t) return;
   document.getElementById('edit-name').value=t.name;
   document.getElementById('edit-album').value=t.album;
   document.getElementById('edit-class').value=t.cls;
@@ -885,23 +1003,22 @@ function openEditModal(id){
   buildColorPicker(t.color);
   document.getElementById('modal').classList.add('open');
 }
-
 function saveEdit(){
   const t=tracks.find(t=>t.id===editingId);
-  if(!t)return;
+  if(!t) return;
   t.name=document.getElementById('edit-name').value.trim()||t.name;
   t.album=document.getElementById('edit-album').value.trim();
   t.cls=document.getElementById('edit-class').value.trim();
   t.folder=document.getElementById('edit-folder').value;
   const sel=document.querySelector('.color-swatch.selected');
-  if(sel)t.color=parseInt(sel.dataset.idx);
-  if(t.tgMsgId)setMeta(t.tgMsgId,{name:t.name,album:t.album,cls:t.cls,color:t.color,duration:t.duration,fileId:t.tgFileId,folder:t.folder});
+  if(sel) t.color=parseInt(sel.dataset.idx);
+  // Save to shared config
+  setMeta(t.tgMsgId,{name:t.name,album:t.album,cls:t.cls,color:t.color,duration:t.duration,fileId:t.tgFileId,folder:t.folder});
   closeModal('modal');
   renderCard(editingId);
-  updateSidebar();updateStats();
+  updateSidebar(); updateStats();
   showToast('✓ Track updated');
 }
-
 function buildColorPicker(selected){
   const wrap=document.getElementById('color-picker');
   wrap.innerHTML='';
@@ -923,7 +1040,7 @@ function setSyncStatus(state,label){
 }
 function hideLoading(){
   const el=document.getElementById('loading');
-  el.classList.add('hidden');setTimeout(()=>el.style.display='none',450);
+  el.classList.add('hidden'); setTimeout(()=>el.style.display='none',450);
 }
 function updateStats(){
   document.getElementById('stat-total').textContent=tracks.length;
@@ -933,15 +1050,15 @@ function updateStats(){
     total>3600?(total/3600).toFixed(1)+'h':total>60?Math.round(total/60)+'m':Math.round(total)+'s';
 }
 function fmtTime(s){
-  if(!s||isNaN(s))return'0:00';
+  if(!s||isNaN(s)) return'0:00';
   return`${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
 }
-function esc(str){return(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function esc(str){return(str||''). replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function cleanName(f){return f.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ').trim()}
 function showToast(msg){
   const t=document.getElementById('toast');
-  t.innerHTML=`<span>${msg}</span>`;t.style.display='flex';
-  clearTimeout(t._timer);t._timer=setTimeout(()=>t.style.display='none',3000);
+  t.innerHTML=`<span>${msg}</span>`; t.style.display='flex';
+  clearTimeout(t._timer); t._timer=setTimeout(()=>t.style.display='none',3000);
 }
 
 // ── Drag & Drop upload ──────────────────────────────────────────
@@ -951,9 +1068,8 @@ dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-ove
 dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
 dz.addEventListener('drop',e=>{
   e.preventDefault();dz.classList.remove('drag-over');
-  // only handle audio files (not card drags)
   const files=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('audio'));
-  if(files.length)handleFiles(files);
+  if(files.length) handleFiles(files);
 });
 fi.addEventListener('change',()=>{handleFiles(Array.from(fi.files));fi.value='';});
 
@@ -961,9 +1077,15 @@ fi.addEventListener('change',()=>{handleFiles(Array.from(fi.files));fi.value='';
 ['modal','folder-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id)});
 });
-
-// enter key in new folder name
 document.getElementById('new-folder-name').addEventListener('keydown',e=>{if(e.key==='Enter')saveNewFolder()});
+
+// ── Mobile sidebar toggle ────────────────────────────────────────
+function toggleMobileSidebar(){
+  const sidebar=document.querySelector('.sidebar');
+  const overlay=document.getElementById('sidebar-overlay');
+  sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('visible');
+}
 
 // ── Boot ─────────────────────────────────────────────────────────
 loadFromTelegram();
