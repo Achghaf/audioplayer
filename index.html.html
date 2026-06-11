@@ -3,736 +3,211 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Waveshelf — Your Audio Library</title>
+<title>Waveshelf — Telegram Cloud</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
   :root {
-    --bg:       #0d0d0f;
-    --surface:  #151518;
-    --surface2: #1c1c21;
-    --border:   #2a2a32;
-    --accent:   #7c6af7;
-    --accent2:  #c084fc;
-    --glow:     rgba(124,106,247,0.18);
-    --text:     #f0eff5;
-    --muted:    #6b6a7a;
-    --danger:   #f87171;
-    --green:    #34d399;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'Space Grotesk', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── HEADER ── */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 40px;
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    background: rgba(13,13,15,0.85);
-    backdrop-filter: blur(16px);
-    z-index: 100;
-  }
-
-  .logo {
-    font-family: 'Space Mono', monospace;
-    font-size: 1.1rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.02em;
-  }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 9px 20px;
-    border-radius: 10px;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.18s;
-    border: none;
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-  }
-  .btn-primary:hover { background: #6a58e8; transform: translateY(-1px); }
-
-  .btn-ghost {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-  }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
-
-  /* ── HERO ── */
-  .hero {
-    text-align: center;
-    padding: 70px 40px 50px;
-    position: relative;
-  }
-
-  .hero::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 50%;
-    transform: translateX(-50%);
-    width: 600px; height: 300px;
-    background: radial-gradient(ellipse at center, rgba(124,106,247,0.15) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .hero-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--accent);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 18px;
-    padding: 6px 14px;
-    background: var(--glow);
-    border: 1px solid rgba(124,106,247,0.3);
-    border-radius: 20px;
-  }
-
-  .hero h1 {
-    font-size: clamp(2.2rem, 5vw, 3.8rem);
-    font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: -0.03em;
-    margin-bottom: 16px;
-  }
-
-  .hero h1 span {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .hero p {
-    color: var(--muted);
-    font-size: 1.05rem;
-    max-width: 480px;
-    margin: 0 auto 36px;
-    line-height: 1.6;
-  }
-
-  /* ── STATS BAR ── */
-  .stats {
-    display: flex;
-    justify-content: center;
-    gap: 40px;
-    margin-bottom: 56px;
-  }
-  .stat { text-align: center; }
-  .stat-num {
-    font-family: 'Space Mono', monospace;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text);
-  }
-  .stat-label {
-    font-size: 0.75rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  /* ── MAIN LAYOUT ── */
-  .main {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 40px 80px;
-  }
-
-  /* ── DROP ZONE ── */
-  .drop-zone {
-    border: 2px dashed var(--border);
-    border-radius: 20px;
-    padding: 56px 40px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.25s;
-    position: relative;
-    background: var(--surface);
-    margin-bottom: 48px;
-  }
-
-  .drop-zone:hover,
-  .drop-zone.drag-over {
-    border-color: var(--accent);
-    background: rgba(124,106,247,0.06);
-    box-shadow: 0 0 40px var(--glow);
-  }
-
-  .drop-zone input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-  }
-
-  .drop-icon {
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 20px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.8rem;
-  }
-
-  .drop-zone h3 {
-    font-size: 1.15rem;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-
-  .drop-zone p {
-    color: var(--muted);
-    font-size: 0.88rem;
-    margin-bottom: 20px;
-  }
-
-  .drop-formats {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .format-badge {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.7rem;
-    padding: 4px 10px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--muted);
-  }
-
-  /* ── TOOLBAR ── */
-  .toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .toolbar-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .section-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .count-badge {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.72rem;
-    padding: 3px 10px;
-    background: var(--glow);
-    border: 1px solid rgba(124,106,247,0.3);
-    border-radius: 20px;
-    color: var(--accent);
-  }
-
-  .search-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 8px 14px;
-    transition: border-color 0.18s;
-  }
-
-  .search-box:focus-within {
-    border-color: var(--accent);
-  }
-
-  .search-box input {
-    background: none;
-    border: none;
-    color: var(--text);
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.88rem;
-    outline: none;
-    width: 200px;
-  }
-
-  .search-box input::placeholder { color: var(--muted); }
-
-  /* ── AUDIO GRID ── */
-  .audio-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-  }
-
-  /* ── AUDIO CARD ── */
-  .audio-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-    position: relative;
-  }
-
-  .audio-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(124,106,247,0.4);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(124,106,247,0.1);
-  }
-
-  .card-cover {
-    height: 140px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .card-cover-bg {
-    position: absolute;
-    inset: 0;
-    opacity: 0.7;
-  }
-
-  .card-cover-icon {
-    position: relative;
-    z-index: 1;
-    font-size: 2.5rem;
-    opacity: 0.9;
-  }
-
-  .card-waveform {
-    position: absolute;
-    bottom: 0;
-    left: 0; right: 0;
-    height: 40px;
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    padding: 0 12px 6px;
-    z-index: 1;
-  }
-
-  .waveform-bar {
-    flex: 1;
-    background: rgba(255,255,255,0.25);
-    border-radius: 2px 2px 0 0;
-    transition: background 0.2s;
-  }
-
-  .audio-card.playing .waveform-bar {
-    animation: pulse-bar 0.8s ease-in-out infinite alternate;
-  }
-
-  @keyframes pulse-bar {
-    from { opacity: 0.3; }
-    to   { opacity: 1; }
-  }
-
-  .card-body {
-    padding: 18px;
-  }
-
-  .card-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    gap: 10px;
-  }
-
-  .card-info { flex: 1; min-width: 0; }
-
-  .card-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-bottom: 4px;
-  }
-
-  .card-album {
-    font-size: 0.78rem;
-    color: var(--muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .card-actions {
-    display: flex;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-
-  .icon-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    transition: all 0.15s;
-  }
-
-  .icon-btn:hover { color: var(--text); border-color: var(--accent); }
-  .icon-btn.danger:hover { color: var(--danger); border-color: var(--danger); }
-
-  .card-tags {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 14px;
-  }
-
-  .tag {
-    font-size: 0.7rem;
-    padding: 3px 9px;
-    border-radius: 6px;
-    font-weight: 500;
-  }
-
-  .tag-class {
-    background: rgba(124,106,247,0.15);
-    color: var(--accent2);
-    border: 1px solid rgba(124,106,247,0.25);
-  }
-
-  .tag-genre {
-    background: rgba(52,211,153,0.1);
-    color: var(--green);
-    border: 1px solid rgba(52,211,153,0.2);
-  }
-
-  /* ── AUDIO PLAYER ── */
-  .card-player {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .play-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: var(--accent);
-    border: none;
-    color: #fff;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    flex-shrink: 0;
-    transition: background 0.15s, transform 0.15s;
-  }
-
-  .play-btn:hover { background: #6a58e8; transform: scale(1.05); }
-
-  .progress-wrap {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .progress-bar-bg {
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    cursor: pointer;
-    position: relative;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 2px;
-    width: 0%;
-    transition: width 0.1s linear;
-    pointer-events: none;
-  }
-
-  .time-info {
-    display: flex;
-    justify-content: space-between;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--muted);
-  }
-
-  /* ── EDIT MODAL ── */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    backdrop-filter: blur(6px);
-    z-index: 200;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-
-  .modal-overlay.open {
-    display: flex;
-  }
-
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 32px;
-    width: 100%;
-    max-width: 460px;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
-  }
-
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 28px;
-  }
-
-  .modal-title {
-    font-size: 1.05rem;
-    font-weight: 600;
-  }
-
-  .modal-close {
-    background: none;
-    border: none;
-    color: var(--muted);
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 4px;
-    line-height: 1;
-  }
-  .modal-close:hover { color: var(--text); }
-
-  .form-group {
-    margin-bottom: 18px;
-  }
-
-  label {
-    display: block;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 7px;
-  }
-
-  input[type="text"],
-  select {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
-    color: var(--text);
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.9rem;
-    outline: none;
-    transition: border-color 0.18s;
-    -webkit-appearance: none;
-  }
-
-  input[type="text"]:focus,
-  select:focus { border-color: var(--accent); }
-
-  .color-picker-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .color-swatch {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: border-color 0.15s, transform 0.15s;
-  }
-
-  .color-swatch:hover, .color-swatch.selected {
-    border-color: #fff;
-    transform: scale(1.1);
-  }
-
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 28px;
-  }
-
-  /* ── EMPTY STATE ── */
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--muted);
-  }
-
-  .empty-state-icon {
-    font-size: 3rem;
-    margin-bottom: 16px;
-    opacity: 0.4;
-  }
-
-  .empty-state h3 {
-    font-size: 1rem;
-    color: var(--text);
-    margin-bottom: 8px;
-  }
-
-  .empty-state p { font-size: 0.88rem; }
-
-  /* ── TOAST ── */
-  #toast {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px 20px;
-    font-size: 0.85rem;
-    display: none;
-    align-items: center;
-    gap: 10px;
-    z-index: 300;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    animation: slide-in 0.3s ease;
-  }
-
-  @keyframes slide-in {
-    from { transform: translateY(20px); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
-  }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 640px) {
-    header { padding: 16px 20px; }
-    .main  { padding: 0 20px 60px; }
-    .hero  { padding: 50px 20px 36px; }
-    .stats { gap: 24px; }
-    .audio-grid { grid-template-columns: 1fr; }
-    .search-box input { width: 140px; }
+    --bg:#0d0d0f; --surface:#151518; --surface2:#1c1c21; --border:#2a2a32;
+    --accent:#7c6af7; --accent2:#c084fc; --glow:rgba(124,106,247,0.18);
+    --text:#f0eff5; --muted:#6b6a7a; --danger:#f87171; --green:#34d399;
+    --tg:#2AABEE;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+  /* HEADER */
+  header{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(13,13,15,0.9);backdrop-filter:blur(16px);z-index:100;gap:12px;flex-wrap:wrap}
+  .logo{font-family:'Space Mono',monospace;font-size:1.05rem;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .sync-status{display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--muted);padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .sync-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+  .sync-dot.uploading{background:var(--accent);animation:blink .7s infinite}
+  .sync-dot.error{background:var(--danger)}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:10px;font-family:'Space Grotesk',sans-serif;font-size:0.83rem;font-weight:500;cursor:pointer;transition:all .18s;border:none}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:#6a58e8;transform:translateY(-1px)}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--text)}
+  .btn-tg{background:var(--tg);color:#fff}
+  .btn-tg:hover{background:#1a9bd5;transform:translateY(-1px)}
+
+  /* HERO */
+  .hero{text-align:center;padding:60px 40px 44px;position:relative}
+  .hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:600px;height:280px;background:radial-gradient(ellipse at center,rgba(124,106,247,0.14) 0%,transparent 70%);pointer-events:none}
+  .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--tg);letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px;padding:5px 14px;background:rgba(42,171,238,0.1);border:1px solid rgba(42,171,238,0.3);border-radius:20px}
+  .hero h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:700;line-height:1.1;letter-spacing:-.03em;margin-bottom:14px}
+  .hero h1 span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hero p{color:var(--muted);font-size:1rem;max-width:460px;margin:0 auto 30px;line-height:1.6}
+  .stats{display:flex;justify-content:center;gap:36px;margin-bottom:48px;flex-wrap:wrap}
+  .stat{text-align:center}
+  .stat-num{font-family:'Space Mono',monospace;font-size:1.4rem;font-weight:700}
+  .stat-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+  /* MAIN */
+  .main{max-width:1200px;margin:0 auto;padding:0 40px 80px}
+
+  /* DROP ZONE */
+  .drop-zone{border:2px dashed var(--border);border-radius:20px;padding:50px 40px;text-align:center;cursor:pointer;transition:all .25s;position:relative;background:var(--surface);margin-bottom:40px}
+  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(124,106,247,0.06);box-shadow:0 0 40px var(--glow)}
+  .drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .drop-icon{width:60px;height:60px;margin:0 auto 18px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.7rem}
+  .drop-zone h3{font-size:1.1rem;font-weight:600;margin-bottom:7px}
+  .drop-zone p{color:var(--muted);font-size:.85rem;margin-bottom:18px}
+  .drop-formats{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}
+  .format-badge{font-family:'Space Mono',monospace;font-size:.68rem;padding:3px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted)}
+
+  /* UPLOAD QUEUE */
+  .upload-queue{margin-bottom:32px;display:none;flex-direction:column;gap:8px}
+  .upload-queue.visible{display:flex}
+  .queue-item{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+  .queue-name{flex:1;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .queue-bar-bg{width:120px;height:4px;background:var(--border);border-radius:2px;flex-shrink:0}
+  .queue-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;width:0%;transition:width .2s}
+  .queue-status{font-size:.75rem;color:var(--muted);flex-shrink:0;width:60px;text-align:right}
+
+  /* TOOLBAR */
+  .toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:14px;flex-wrap:wrap}
+  .toolbar-left{display:flex;align-items:center;gap:10px}
+  .section-title{font-size:.95rem;font-weight:600}
+  .count-badge{font-family:'Space Mono',monospace;font-size:.7rem;padding:3px 10px;background:var(--glow);border:1px solid rgba(124,106,247,.3);border-radius:20px;color:var(--accent)}
+  .search-box{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 13px;transition:border-color .18s}
+  .search-box:focus-within{border-color:var(--accent)}
+  .search-box input{background:none;border:none;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:.85rem;outline:none;width:180px}
+  .search-box input::placeholder{color:var(--muted)}
+
+  /* GRID */
+  .audio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px}
+  .audio-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;transition:transform .2s,box-shadow .2s,border-color .2s;position:relative}
+  .audio-card:hover{transform:translateY(-3px);border-color:rgba(124,106,247,.4);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+  .card-cover{height:130px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+  .card-cover-bg{position:absolute;inset:0;opacity:.75}
+  .card-cover-icon{position:relative;z-index:1;font-size:2.2rem;opacity:.9}
+  .card-waveform{position:absolute;bottom:0;left:0;right:0;height:38px;display:flex;align-items:flex-end;gap:2px;padding:0 12px 5px;z-index:1}
+  .waveform-bar{flex:1;background:rgba(255,255,255,.22);border-radius:2px 2px 0 0}
+  .audio-card.playing .waveform-bar{animation:pulse-bar .8s ease-in-out infinite alternate}
+  @keyframes pulse-bar{from{opacity:.3}to{opacity:1}}
+  .card-tg-badge{position:absolute;top:10px;right:10px;z-index:2;background:rgba(42,171,238,.2);border:1px solid rgba(42,171,238,.4);border-radius:6px;padding:3px 7px;font-size:.65rem;color:var(--tg);font-family:'Space Mono',monospace}
+  .card-body{padding:16px}
+  .card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px}
+  .card-info{flex:1;min-width:0}
+  .card-title{font-size:.92rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+  .card-album{font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card-actions{display:flex;gap:5px;flex-shrink:0}
+  .icon-btn{width:28px;height:28px;border-radius:7px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.78rem;transition:all .15s}
+  .icon-btn:hover{color:var(--text);border-color:var(--accent)}
+  .icon-btn.danger:hover{color:var(--danger);border-color:var(--danger)}
+  .card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+  .tag{font-size:.68rem;padding:2px 8px;border-radius:5px;font-weight:500}
+  .tag-class{background:rgba(124,106,247,.15);color:var(--accent2);border:1px solid rgba(124,106,247,.25)}
+  .tag-genre{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.2)}
+  .card-player{display:flex;align-items:center;gap:9px}
+  .play-btn{width:34px;height:34px;border-radius:9px;background:var(--accent);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0;transition:background .15s,transform .15s}
+  .play-btn:hover{background:#6a58e8;transform:scale(1.05)}
+  .progress-wrap{flex:1;display:flex;flex-direction:column;gap:4px}
+  .progress-bar-bg{height:4px;background:var(--border);border-radius:2px;cursor:pointer;position:relative}
+  .progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;width:0%;transition:width .1s linear;pointer-events:none}
+  .time-info{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:.63rem;color:var(--muted)}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:30px;width:100%;max-width:440px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+  .modal-title{font-size:1rem;font-weight:600}
+  .modal-close{background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:4px;line-height:1}
+  .modal-close:hover{color:var(--text)}
+  .form-group{margin-bottom:16px}
+  label{display:block;font-size:.78rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  input[type=text],select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 13px;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:.88rem;outline:none;transition:border-color .18s;-webkit-appearance:none}
+  input[type=text]:focus,select:focus{border-color:var(--accent)}
+  .color-picker-row{display:flex;gap:7px;flex-wrap:wrap}
+  .color-swatch{width:30px;height:30px;border-radius:7px;cursor:pointer;border:2px solid transparent;transition:border-color .15s,transform .15s}
+  .color-swatch:hover,.color-swatch.selected{border-color:#fff;transform:scale(1.12)}
+  .modal-footer{display:flex;justify-content:flex-end;gap:9px;margin-top:26px}
+
+  /* EMPTY */
+  .empty-state{text-align:center;padding:60px 20px;color:var(--muted);grid-column:1/-1}
+  .empty-state-icon{font-size:2.8rem;margin-bottom:14px;opacity:.4}
+  .empty-state h3{font-size:.95rem;color:var(--text);margin-bottom:7px}
+  .empty-state p{font-size:.85rem}
+
+  /* LOADING */
+  .loading-screen{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .4s}
+  .loading-screen.hidden{opacity:0;pointer-events:none}
+  .loading-logo{font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .loading-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-msg{font-size:.85rem;color:var(--muted)}
+
+  /* TOAST */
+  #toast{position:fixed;bottom:28px;right:28px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 18px;font-size:.83rem;display:none;align-items:center;gap:9px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:slide-in .3s ease}
+  @keyframes slide-in{from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+  @media(max-width:640px){
+    header{padding:14px 18px}
+    .main{padding:0 18px 60px}
+    .hero{padding:44px 18px 32px}
+    .stats{gap:20px}
+    .audio-grid{grid-template-columns:1fr}
+    .search-box input{width:120px}
   }
 </style>
 </head>
 <body>
 
+<!-- LOADING -->
+<div class="loading-screen" id="loading">
+  <div class="loading-logo">⬡ waveshelf</div>
+  <div class="loading-spinner"></div>
+  <div class="loading-msg" id="loading-msg">Connecting to Telegram…</div>
+</div>
+
 <!-- HEADER -->
 <header>
   <div class="logo">⬡ waveshelf</div>
-  <div class="header-actions">
-    <button class="btn btn-ghost" onclick="document.getElementById('file-input').click()">
-      ＋ Add Audio
-    </button>
-    <button class="btn btn-primary" onclick="clearAll()">
-      ⟳ Reset Library
-    </button>
+  <div class="header-right">
+    <div class="sync-status">
+      <div class="sync-dot ok" id="sync-dot"></div>
+      <span id="sync-label">Synced with Telegram</span>
+    </div>
+    <button class="btn btn-tg" onclick="loadFromTelegram()">↻ Refresh</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('file-input').click()">＋ Add Audio</button>
   </div>
 </header>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-eyebrow">🎵 Audio Library</div>
-  <h1>Your sounds,<br><span>beautifully organized</span></h1>
-  <p>Drop your audio files, tag them by class and album, and play everything in one place.</p>
+  <div class="hero-eyebrow">☁️ Telegram Cloud Sync</div>
+  <h1>Your sounds,<br><span>synced everywhere</span></h1>
+  <p>Upload audio here — it's stored in your Telegram channel and available on every device instantly.</p>
   <div class="stats">
-    <div class="stat">
-      <div class="stat-num" id="stat-total">0</div>
-      <div class="stat-label">Tracks</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num" id="stat-albums">0</div>
-      <div class="stat-label">Albums</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num" id="stat-duration">0s</div>
-      <div class="stat-label">Total time</div>
-    </div>
+    <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Tracks</div></div>
+    <div class="stat"><div class="stat-num" id="stat-albums">0</div><div class="stat-label">Albums</div></div>
+    <div class="stat"><div class="stat-num" id="stat-duration">0s</div><div class="stat-label">Total time</div></div>
   </div>
 </section>
 
 <!-- MAIN -->
 <main class="main">
 
-  <!-- DROP ZONE -->
   <div class="drop-zone" id="drop-zone">
     <input type="file" id="file-input" accept="audio/*" multiple>
     <div class="drop-icon">🎧</div>
-    <h3>Drop your audio files here</h3>
-    <p>Or click anywhere in this area to browse — select multiple files at once</p>
+    <h3>Drop audio files here</h3>
+    <p>Files upload directly to your Telegram channel and sync across all devices</p>
     <div class="drop-formats">
-      <span class="format-badge">MP3</span>
-      <span class="format-badge">WAV</span>
-      <span class="format-badge">FLAC</span>
-      <span class="format-badge">OGG</span>
-      <span class="format-badge">M4A</span>
-      <span class="format-badge">AAC</span>
+      <span class="format-badge">MP3</span><span class="format-badge">WAV</span>
+      <span class="format-badge">FLAC</span><span class="format-badge">OGG</span>
+      <span class="format-badge">M4A</span><span class="format-badge">AAC</span>
     </div>
   </div>
 
-  <!-- TOOLBAR -->
+  <div class="upload-queue" id="upload-queue"></div>
+
   <div class="toolbar">
     <div class="toolbar-left">
       <span class="section-title">Library</span>
@@ -740,16 +215,15 @@
     </div>
     <div class="search-box">
       <span style="color:var(--muted)">⌕</span>
-      <input type="text" placeholder="Search tracks…" id="search-input" oninput="filterCards()">
+      <input type="text" placeholder="Search…" id="search-input" oninput="renderAll()">
     </div>
   </div>
 
-  <!-- AUDIO GRID -->
   <div class="audio-grid" id="audio-grid">
     <div class="empty-state" id="empty-state">
       <div class="empty-state-icon">🎶</div>
-      <h3>No audio yet</h3>
-      <p>Drop some files above to start building your library</p>
+      <h3>Library empty</h3>
+      <p>Drop files above — they'll upload to Telegram and appear here</p>
     </div>
   </div>
 </main>
@@ -761,328 +235,500 @@
       <span class="modal-title">Edit Track Info</span>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
-    <div class="form-group">
-      <label>Track Name</label>
-      <input type="text" id="edit-name" placeholder="Track title">
-    </div>
-    <div class="form-group">
-      <label>Album</label>
-      <input type="text" id="edit-album" placeholder="Album name">
-    </div>
-    <div class="form-group">
-      <label>Class / Genre</label>
-      <input type="text" id="edit-class" placeholder="e.g. Hip-Hop, Classical, Ambient…">
-    </div>
-    <div class="form-group">
-      <label>Cover Color</label>
-      <div class="color-picker-row" id="color-picker"></div>
-    </div>
+    <div class="form-group"><label>Track Name</label><input type="text" id="edit-name" placeholder="Track title"></div>
+    <div class="form-group"><label>Album</label><input type="text" id="edit-album" placeholder="Album name"></div>
+    <div class="form-group"><label>Class / Genre</label><input type="text" id="edit-class" placeholder="Hip-Hop, Classical, Ambient…"></div>
+    <div class="form-group"><label>Cover Color</label><div class="color-picker-row" id="color-picker"></div></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Save</button>
     </div>
   </div>
 </div>
 
-<!-- TOAST -->
 <div id="toast"></div>
 
 <script>
-  // ── State ──────────────────────────────────────────────
-  let tracks = [];
-  let editingId = null;
-  let currentAudio = null;
-  let currentCard  = null;
+// ── CONFIG ──────────────────────────────────────────────────────
+const BOT_TOKEN  = '8821842994:AAGlp_CjRcnoipVvUiP7_huUrDFYShYw_Bg';
+const CHANNEL_ID = '-1003707723608';
+const API        = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const FILE_API   = `https://api.telegram.org/file/bot${BOT_TOKEN}`;
 
-  const COVER_COLORS = [
-    ['#7c6af7','#c084fc'], ['#f97316','#fbbf24'],
-    ['#06b6d4','#3b82f6'], ['#ec4899','#f43f5e'],
-    ['#10b981','#34d399'], ['#8b5cf6','#6366f1'],
-    ['#f59e0b','#84cc16'], ['#ef4444','#f97316'],
-  ];
+// ── State ───────────────────────────────────────────────────────
+let tracks      = [];   // { id, tgMsgId, tgFileId, name, album, cls, color, duration, url }
+let editingId   = null;
+let currentAudio = null;
+let currentCard  = null;
 
-  // ── Drag & Drop ────────────────────────────────────────
-  const dz = document.getElementById('drop-zone');
-  const fi = document.getElementById('file-input');
+const COVER_COLORS = [
+  ['#7c6af7','#c084fc'],['#f97316','#fbbf24'],
+  ['#06b6d4','#3b82f6'],['#ec4899','#f43f5e'],
+  ['#10b981','#34d399'],['#8b5cf6','#6366f1'],
+  ['#f59e0b','#84cc16'],['#ef4444','#f97316'],
+];
 
-  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
-  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-  dz.addEventListener('drop', e => {
-    e.preventDefault();
-    dz.classList.remove('drag-over');
-    handleFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio')));
-  });
-  fi.addEventListener('change', () => handleFiles(Array.from(fi.files)));
+// ── Metadata store (localStorage, keyed by tg message id) ──────
+function getMeta(msgId) {
+  try { return JSON.parse(localStorage.getItem('ws_meta_' + msgId) || 'null'); } catch { return null; }
+}
+function setMeta(msgId, data) {
+  localStorage.setItem('ws_meta_' + msgId, JSON.stringify(data));
+}
 
-  function handleFiles(files) {
-    if (!files.length) return;
-    files.forEach(file => {
-      const id = 'track_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-      const url = URL.createObjectURL(file);
-      const colorIdx = Math.floor(Math.random() * COVER_COLORS.length);
-      tracks.push({
-        id, url, file,
-        name:   cleanName(file.name),
-        album:  '',
-        cls:    '',
-        color:  colorIdx,
-        duration: 0,
-      });
-      // get duration
-      const tmp = new Audio(url);
-      tmp.addEventListener('loadedmetadata', () => {
-        const t = tracks.find(t => t.id === id);
-        if (t) { t.duration = tmp.duration; updateStats(); renderCard(id); }
-      });
+// ── Telegram helpers ────────────────────────────────────────────
+async function tgGet(method, params = {}) {
+  const url = new URL(`${API}/${method}`);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const r = await fetch(url);
+  return r.json();
+}
+
+async function getFileUrl(fileId) {
+  const r = await tgGet('getFile', { file_id: fileId });
+  if (!r.ok) return null;
+  return `${FILE_API}/${r.result.file_path}`;
+}
+
+// ── Load library from Telegram ──────────────────────────────────
+async function loadFromTelegram() {
+  setSyncStatus('loading', 'Loading…');
+  try {
+    let messages = [];
+    let offset   = 0;
+    // fetch up to 200 most recent messages
+    for (let i = 0; i < 4; i++) {
+      const r = await tgGet('getUpdates', { offset, limit: 100, timeout: 0 });
+      if (!r.ok) break;
+      if (!r.result.length) break;
+      messages.push(...r.result);
+      offset = r.result[r.result.length - 1].update_id + 1;
+    }
+
+    // Also try forwardMessages approach: use getChatHistory via copyMessage workaround
+    // Primary method: use channel posts via getUpdates channel_post
+    const audioMessages = messages
+      .filter(u => u.channel_post && (u.channel_post.audio || u.channel_post.document))
+      .map(u => u.channel_post);
+
+    // If empty, try direct channel message history
+    if (audioMessages.length === 0) {
+      await loadViaChannelHistory();
+      return;
+    }
+
+    await buildTracksFromMessages(audioMessages);
+  } catch (e) {
+    setSyncStatus('error', 'Connection error');
+    showToast('⚠ Could not reach Telegram');
+    hideLoading();
+  }
+}
+
+async function loadViaChannelHistory() {
+  // Use forwardMessages to fetch recent channel history
+  try {
+    // getUpdates with allowed_updates for channel_post
+    const r = await fetch(`${API}/getUpdates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 100, allowed_updates: ['channel_post'], timeout: 0 })
     });
-    renderAll();
-    updateStats();
-    showToast(`✓ Added ${files.length} track${files.length > 1 ? 's' : ''}`);
-    fi.value = '';
+    const data = await r.json();
+
+    const posts = (data.result || [])
+      .filter(u => u.channel_post && (u.channel_post.audio || u.channel_post.document))
+      .map(u => u.channel_post);
+
+    await buildTracksFromMessages(posts);
+  } catch(e) {
+    setSyncStatus('error', 'Error');
+    hideLoading();
   }
+}
 
-  function cleanName(filename) {
-    return filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim();
-  }
+async function buildTracksFromMessages(msgs) {
+  tracks = [];
+  for (const msg of msgs) {
+    const audio = msg.audio || msg.document;
+    if (!audio) continue;
+    const mime = audio.mime_type || '';
+    if (!mime.startsWith('audio') && !msg.audio) continue;
 
-  // ── Render ─────────────────────────────────────────────
-  function renderAll() {
-    const grid = document.getElementById('audio-grid');
-    const empty = document.getElementById('empty-state');
-    const q = document.getElementById('search-input').value.toLowerCase();
-    const visible = tracks.filter(t =>
-      t.name.toLowerCase().includes(q) ||
-      t.album.toLowerCase().includes(q) ||
-      t.cls.toLowerCase().includes(q)
-    );
+    const msgId = msg.message_id;
+    const meta  = getMeta(msgId) || {};
+    const rawName = audio.file_name || audio.title || 'Track';
 
-    // remove old cards (not empty state)
-    grid.querySelectorAll('.audio-card').forEach(c => c.remove());
-    empty.style.display = visible.length ? 'none' : 'block';
-
-    visible.forEach(t => {
-      const el = buildCard(t);
-      grid.appendChild(el);
+    tracks.push({
+      id:        'tg_' + msgId,
+      tgMsgId:   msgId,
+      tgFileId:  audio.file_id,
+      name:      meta.name  || cleanName(rawName),
+      album:     meta.album || audio.performer || '',
+      cls:       meta.cls   || '',
+      color:     meta.color !== undefined ? meta.color : (msgId % COVER_COLORS.length),
+      duration:  audio.duration || 0,
+      url:       null,  // lazy loaded
     });
-
-    document.getElementById('count-badge').textContent =
-      tracks.length + ' track' + (tracks.length !== 1 ? 's' : '');
   }
 
-  function renderCard(id) {
-    const existing = document.querySelector(`[data-id="${id}"]`);
-    const t = tracks.find(t => t.id === id);
-    if (!t || !existing) return;
-    const fresh = buildCard(t);
-    existing.replaceWith(fresh);
-  }
+  renderAll();
+  updateStats();
+  setSyncStatus('ok', 'Synced with Telegram');
+  hideLoading();
+  if (tracks.length === 0) showToast('No audio found in channel yet — upload some!');
+}
 
-  function buildCard(t) {
-    const [c1, c2] = COVER_COLORS[t.color];
-    const bars = Array.from({length: 28}, () =>
-      `<div class="waveform-bar" style="height:${6 + Math.random()*26}px;animation-delay:${Math.random()*0.6}s"></div>`
-    ).join('');
+// ── Stream / lazy load audio URL ────────────────────────────────
+async function resolveUrl(id) {
+  const t = tracks.find(t => t.id === id);
+  if (!t) return null;
+  if (t.url) return t.url;
+  const url = await getFileUrl(t.tgFileId);
+  if (url) t.url = url;
+  return url;
+}
 
-    const dur = t.duration ? fmtTime(t.duration) : '--:--';
+// ── Upload to Telegram ──────────────────────────────────────────
+async function handleFiles(files) {
+  if (!files.length) return;
+  const queue = document.getElementById('upload-queue');
+  queue.classList.add('visible');
 
-    const card = document.createElement('div');
-    card.className = 'audio-card';
-    card.dataset.id = t.id;
-    card.innerHTML = `
-      <div class="card-cover">
-        <div class="card-cover-bg" style="background:linear-gradient(135deg,${c1},${c2})"></div>
-        <div class="card-cover-icon">🎵</div>
-        <div class="card-waveform">${bars}</div>
-      </div>
-      <div class="card-body">
-        <div class="card-header">
-          <div class="card-info">
-            <div class="card-title" title="${esc(t.name)}">${esc(t.name) || 'Untitled'}</div>
-            <div class="card-album">${esc(t.album) || '<em style="opacity:.5">No album</em>'}</div>
-          </div>
-          <div class="card-actions">
-            <button class="icon-btn" title="Edit" onclick="openModal('${t.id}')">✎</button>
-            <button class="icon-btn danger" title="Remove" onclick="removeTrack('${t.id}')">✕</button>
-          </div>
-        </div>
-        <div class="card-tags">
-          ${t.cls   ? `<span class="tag tag-class">${esc(t.cls)}</span>` : ''}
-          ${t.album ? `<span class="tag tag-genre">${esc(t.album)}</span>` : ''}
-        </div>
-        <div class="card-player">
-          <button class="play-btn" onclick="togglePlay('${t.id}', this)">▶</button>
-          <div class="progress-wrap">
-            <div class="progress-bar-bg" onclick="seek(event, '${t.id}', this)">
-              <div class="progress-bar-fill" id="prog-${t.id}"></div>
-            </div>
-            <div class="time-info">
-              <span id="cur-${t.id}">0:00</span>
-              <span>${dur}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+  for (const file of files) {
+    const itemId = 'qi_' + Date.now();
+    const item = document.createElement('div');
+    item.className = 'queue-item';
+    item.id = itemId;
+    item.innerHTML = `
+      <span style="font-size:1rem">🎵</span>
+      <span class="queue-name">${esc(file.name)}</span>
+      <div class="queue-bar-bg"><div class="queue-bar-fill" id="qf_${itemId}"></div></div>
+      <span class="queue-status" id="qs_${itemId}">Uploading…</span>
     `;
-    return card;
+    queue.appendChild(item);
+
+    try {
+      setSyncStatus('uploading', 'Uploading…');
+      const msgId = await uploadToTelegram(file, itemId);
+      document.getElementById('qs_' + itemId).textContent = '✓ Done';
+      document.getElementById('qs_' + itemId).style.color = 'var(--green)';
+      document.getElementById('qf_' + itemId).style.width = '100%';
+
+      if (msgId) {
+        const colorIdx = Math.floor(Math.random() * COVER_COLORS.length);
+        const meta = { name: cleanName(file.name), album: '', cls: '', color: colorIdx };
+        setMeta(msgId, meta);
+
+        // add to local tracks immediately
+        const tmp = new Audio(URL.createObjectURL(file));
+        let dur = 0;
+        await new Promise(res => {
+          tmp.addEventListener('loadedmetadata', () => { dur = tmp.duration; res(); });
+          tmp.addEventListener('error', res);
+          setTimeout(res, 3000);
+        });
+
+        tracks.unshift({
+          id:       'tg_' + msgId,
+          tgMsgId:  msgId,
+          tgFileId: null,
+          name:     meta.name,
+          album:    '',
+          cls:      '',
+          color:    colorIdx,
+          duration: dur,
+          url:      URL.createObjectURL(file),
+        });
+        renderAll();
+        updateStats();
+      }
+    } catch(e) {
+      document.getElementById('qs_' + itemId).textContent = '✗ Failed';
+      document.getElementById('qs_' + itemId).style.color = 'var(--danger)';
+      showToast('⚠ Upload failed: ' + file.name);
+    }
   }
 
-  // ── Player ─────────────────────────────────────────────
-  function togglePlay(id, btn) {
-    const t = tracks.find(t => t.id === id);
-    if (!t) return;
+  setSyncStatus('ok', 'Synced with Telegram');
+  setTimeout(() => {
+    queue.classList.remove('visible');
+    queue.innerHTML = '';
+  }, 3000);
+}
 
-    if (currentAudio && currentCard !== id) {
-      currentAudio.pause();
-      const prevBtn = document.querySelector(`[data-id="${currentCard}"] .play-btn`);
-      if (prevBtn) prevBtn.textContent = '▶';
-      document.querySelector(`[data-id="${currentCard}"]`)?.classList.remove('playing');
-    }
+async function uploadToTelegram(file, itemId) {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('chat_id', CHANNEL_ID);
+    fd.append('audio', file, file.name);
 
-    if (!currentAudio || currentCard !== id) {
-      currentAudio = new Audio(t.url);
-      currentCard = id;
-      currentAudio.addEventListener('timeupdate', () => updateProgress(id));
-      currentAudio.addEventListener('ended', () => {
-        btn.textContent = '▶';
-        document.querySelector(`[data-id="${id}"]`)?.classList.remove('playing');
-      });
-    }
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API}/sendAudio`);
 
-    if (currentAudio.paused) {
-      currentAudio.play();
-      btn.textContent = '⏸';
-      document.querySelector(`[data-id="${id}"]`)?.classList.add('playing');
-    } else {
-      currentAudio.pause();
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        const fill = document.getElementById('qf_' + itemId);
+        if (fill) fill.style.width = pct + '%';
+        const stat = document.getElementById('qs_' + itemId);
+        if (stat) stat.textContent = pct + '%';
+      }
+    };
+
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (data.ok) resolve(data.result.message_id);
+        else { console.error(data); resolve(null); }
+      } catch { resolve(null); }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error'));
+    xhr.send(fd);
+  });
+}
+
+// ── Render ──────────────────────────────────────────────────────
+function renderAll() {
+  const grid  = document.getElementById('audio-grid');
+  const empty = document.getElementById('empty-state');
+  const q     = document.getElementById('search-input').value.toLowerCase();
+
+  const visible = tracks.filter(t =>
+    t.name.toLowerCase().includes(q) ||
+    t.album.toLowerCase().includes(q) ||
+    t.cls.toLowerCase().includes(q)
+  );
+
+  grid.querySelectorAll('.audio-card').forEach(c => c.remove());
+  empty.style.display = visible.length ? 'none' : 'block';
+  visible.forEach(t => grid.appendChild(buildCard(t)));
+
+  document.getElementById('count-badge').textContent =
+    tracks.length + ' track' + (tracks.length !== 1 ? 's' : '');
+}
+
+function renderCard(id) {
+  const existing = document.querySelector(`[data-id="${id}"]`);
+  const t = tracks.find(t => t.id === id);
+  if (!t || !existing) return;
+  existing.replaceWith(buildCard(t));
+}
+
+function buildCard(t) {
+  const [c1,c2] = COVER_COLORS[t.color];
+  const bars = Array.from({length:26}, () =>
+    `<div class="waveform-bar" style="height:${6+Math.random()*24}px;animation-delay:${Math.random()*.6}s"></div>`
+  ).join('');
+  const dur = t.duration ? fmtTime(t.duration) : '--:--';
+
+  const card = document.createElement('div');
+  card.className = 'audio-card';
+  card.dataset.id = t.id;
+  card.innerHTML = `
+    <div class="card-cover">
+      <div class="card-cover-bg" style="background:linear-gradient(135deg,${c1},${c2})"></div>
+      <div class="card-cover-icon">🎵</div>
+      <div class="card-waveform">${bars}</div>
+      <div class="card-tg-badge">TG</div>
+    </div>
+    <div class="card-body">
+      <div class="card-header">
+        <div class="card-info">
+          <div class="card-title" title="${esc(t.name)}">${esc(t.name)||'Untitled'}</div>
+          <div class="card-album">${esc(t.album)||'<em style="opacity:.45">No album</em>'}</div>
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn" title="Edit" onclick="openModal('${t.id}')">✎</button>
+        </div>
+      </div>
+      <div class="card-tags">
+        ${t.cls   ? `<span class="tag tag-class">${esc(t.cls)}</span>` : ''}
+        ${t.album ? `<span class="tag tag-genre">${esc(t.album)}</span>` : ''}
+      </div>
+      <div class="card-player">
+        <button class="play-btn" onclick="togglePlay('${t.id}',this)">▶</button>
+        <div class="progress-wrap">
+          <div class="progress-bar-bg" onclick="seek(event,'${t.id}',this)">
+            <div class="progress-bar-fill" id="prog-${t.id}"></div>
+          </div>
+          <div class="time-info">
+            <span id="cur-${t.id}">0:00</span>
+            <span>${dur}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+// ── Player ──────────────────────────────────────────────────────
+async function togglePlay(id, btn) {
+  const t = tracks.find(t => t.id === id);
+  if (!t) return;
+
+  if (currentAudio && currentCard !== id) {
+    currentAudio.pause();
+    const prevBtn = document.querySelector(`[data-id="${currentCard}"] .play-btn`);
+    if (prevBtn) prevBtn.textContent = '▶';
+    document.querySelector(`[data-id="${currentCard}"]`)?.classList.remove('playing');
+    currentAudio = null;
+  }
+
+  if (!currentAudio || currentCard !== id) {
+    btn.textContent = '⏳';
+    const url = await resolveUrl(id);
+    if (!url) { showToast('⚠ Could not load audio'); btn.textContent = '▶'; return; }
+    currentAudio = new Audio(url);
+    currentCard  = id;
+    currentAudio.addEventListener('timeupdate', () => updateProgress(id));
+    currentAudio.addEventListener('ended', () => {
       btn.textContent = '▶';
       document.querySelector(`[data-id="${id}"]`)?.classList.remove('playing');
-    }
-  }
-
-  function seek(e, id, bar) {
-    if (!currentAudio || currentCard !== id) return;
-    const rect = bar.getBoundingClientRect();
-    const pct  = (e.clientX - rect.left) / rect.width;
-    currentAudio.currentTime = pct * currentAudio.duration;
-  }
-
-  function updateProgress(id) {
-    if (!currentAudio) return;
-    const pct  = (currentAudio.currentTime / currentAudio.duration) * 100 || 0;
-    const fill = document.getElementById('prog-' + id);
-    const cur  = document.getElementById('cur-' + id);
-    if (fill) fill.style.width = pct + '%';
-    if (cur)  cur.textContent  = fmtTime(currentAudio.currentTime);
-  }
-
-  // ── Edit Modal ─────────────────────────────────────────
-  function openModal(id) {
-    editingId = id;
-    const t = tracks.find(t => t.id === id);
-    if (!t) return;
-    document.getElementById('edit-name').value  = t.name;
-    document.getElementById('edit-album').value = t.album;
-    document.getElementById('edit-class').value = t.cls;
-    buildColorPicker(t.color);
-    document.getElementById('modal').classList.add('open');
-  }
-
-  function closeModal() {
-    document.getElementById('modal').classList.remove('open');
-    editingId = null;
-  }
-
-  function saveEdit() {
-    const t = tracks.find(t => t.id === editingId);
-    if (!t) return;
-    t.name  = document.getElementById('edit-name').value.trim() || t.name;
-    t.album = document.getElementById('edit-album').value.trim();
-    t.cls   = document.getElementById('edit-class').value.trim();
-    const sel = document.querySelector('.color-swatch.selected');
-    if (sel) t.color = parseInt(sel.dataset.idx);
-    closeModal();
-    renderCard(editingId);
-    updateStats();
-    showToast('✓ Track updated');
-  }
-
-  function buildColorPicker(selected) {
-    const wrap = document.getElementById('color-picker');
-    wrap.innerHTML = '';
-    COVER_COLORS.forEach(([c1, c2], i) => {
-      const sw = document.createElement('div');
-      sw.className = 'color-swatch' + (i === selected ? ' selected' : '');
-      sw.style.background = `linear-gradient(135deg,${c1},${c2})`;
-      sw.dataset.idx = i;
-      sw.onclick = () => {
-        wrap.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-        sw.classList.add('selected');
-      };
-      wrap.appendChild(sw);
     });
   }
 
-  // ── Misc ───────────────────────────────────────────────
-  function removeTrack(id) {
-    if (currentCard === id && currentAudio) {
-      currentAudio.pause();
-      currentAudio = null;
-      currentCard  = null;
-    }
-    tracks = tracks.filter(t => t.id !== id);
-    document.querySelector(`[data-id="${id}"]`)?.remove();
-    document.getElementById('count-badge').textContent =
-      tracks.length + ' track' + (tracks.length !== 1 ? 's' : '');
-    updateStats();
-    if (!tracks.length) document.getElementById('empty-state').style.display = 'block';
-    showToast('Track removed');
+  if (currentAudio.paused) {
+    await currentAudio.play();
+    btn.textContent = '⏸';
+    document.querySelector(`[data-id="${id}"]`)?.classList.add('playing');
+  } else {
+    currentAudio.pause();
+    btn.textContent = '▶';
+    document.querySelector(`[data-id="${id}"]`)?.classList.remove('playing');
   }
+}
 
-  function clearAll() {
-    if (!tracks.length) return;
-    if (!confirm('Clear the entire library?')) return;
-    if (currentAudio) { currentAudio.pause(); currentAudio = null; currentCard = null; }
-    tracks = [];
-    renderAll();
-    updateStats();
-    showToast('Library cleared');
-  }
+function seek(e, id, bar) {
+  if (!currentAudio || currentCard !== id) return;
+  const rect = bar.getBoundingClientRect();
+  currentAudio.currentTime = ((e.clientX - rect.left) / rect.width) * currentAudio.duration;
+}
 
-  function filterCards() { renderAll(); }
+function updateProgress(id) {
+  if (!currentAudio) return;
+  const pct  = (currentAudio.currentTime / currentAudio.duration) * 100 || 0;
+  const fill = document.getElementById('prog-' + id);
+  const cur  = document.getElementById('cur-'  + id);
+  if (fill) fill.style.width = pct + '%';
+  if (cur)  cur.textContent  = fmtTime(currentAudio.currentTime);
+}
 
-  function updateStats() {
-    document.getElementById('stat-total').textContent = tracks.length;
-    const albums = new Set(tracks.map(t => t.album).filter(Boolean));
-    document.getElementById('stat-albums').textContent = albums.size;
-    const total = tracks.reduce((s, t) => s + (t.duration || 0), 0);
-    document.getElementById('stat-duration').textContent = total > 60
-      ? Math.round(total / 60) + 'm'
-      : Math.round(total) + 's';
-  }
+// ── Edit Modal ──────────────────────────────────────────────────
+function openModal(id) {
+  editingId = id;
+  const t = tracks.find(t => t.id === id);
+  if (!t) return;
+  document.getElementById('edit-name').value  = t.name;
+  document.getElementById('edit-album').value = t.album;
+  document.getElementById('edit-class').value = t.cls;
+  buildColorPicker(t.color);
+  document.getElementById('modal').classList.add('open');
+}
 
-  function fmtTime(s) {
-    if (!s || isNaN(s)) return '0:00';
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60).toString().padStart(2, '0');
-    return `${m}:${sec}`;
-  }
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editingId = null;
+}
 
-  function esc(str) {
-    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
+function saveEdit() {
+  const t = tracks.find(t => t.id === editingId);
+  if (!t) return;
+  t.name  = document.getElementById('edit-name').value.trim()  || t.name;
+  t.album = document.getElementById('edit-album').value.trim();
+  t.cls   = document.getElementById('edit-class').value.trim();
+  const sel = document.querySelector('.color-swatch.selected');
+  if (sel) t.color = parseInt(sel.dataset.idx);
+  // persist meta
+  if (t.tgMsgId) setMeta(t.tgMsgId, { name: t.name, album: t.album, cls: t.cls, color: t.color });
+  closeModal();
+  renderCard(editingId);
+  updateStats();
+  showToast('✓ Track updated');
+}
 
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.innerHTML = `<span>${msg}</span>`;
-    t.style.display = 'flex';
-    clearTimeout(t._timer);
-    t._timer = setTimeout(() => t.style.display = 'none', 2800);
-  }
-
-  // close modal on backdrop click
-  document.getElementById('modal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
+function buildColorPicker(selected) {
+  const wrap = document.getElementById('color-picker');
+  wrap.innerHTML = '';
+  COVER_COLORS.forEach(([c1,c2], i) => {
+    const sw = document.createElement('div');
+    sw.className = 'color-swatch' + (i === selected ? ' selected' : '');
+    sw.style.background = `linear-gradient(135deg,${c1},${c2})`;
+    sw.dataset.idx = i;
+    sw.onclick = () => {
+      wrap.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+    };
+    wrap.appendChild(sw);
   });
+}
+
+// ── UI helpers ──────────────────────────────────────────────────
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot ' + (state === 'ok' ? 'ok' : state === 'uploading' ? 'uploading' : 'error');
+  lbl.textContent = label;
+}
+
+function hideLoading() {
+  const el = document.getElementById('loading');
+  el.classList.add('hidden');
+  setTimeout(() => el.style.display = 'none', 450);
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = tracks.length;
+  const albums = new Set(tracks.map(t => t.album).filter(Boolean));
+  document.getElementById('stat-albums').textContent = albums.size;
+  const total = tracks.reduce((s,t) => s + (t.duration||0), 0);
+  document.getElementById('stat-duration').textContent =
+    total > 3600 ? (total/3600).toFixed(1)+'h' :
+    total > 60   ? Math.round(total/60)+'m'     : Math.round(total)+'s';
+}
+
+function fmtTime(s) {
+  if (!s||isNaN(s)) return '0:00';
+  return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+}
+
+function esc(str) {
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function cleanName(f) {
+  return f.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ').trim();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.innerHTML = `<span>${msg}</span>`;
+  t.style.display = 'flex';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// ── Drag & Drop ──────────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+const fi = document.getElementById('file-input');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  handleFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio')));
+});
+fi.addEventListener('change', () => { handleFiles(Array.from(fi.files)); fi.value = ''; });
+
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── Boot ─────────────────────────────────────────────────────────
+document.getElementById('loading-msg').textContent = 'Loading your Telegram library…';
+loadFromTelegram();
 </script>
 </body>
 </html>
